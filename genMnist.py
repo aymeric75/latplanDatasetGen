@@ -58,10 +58,6 @@ def mnist(labels=range(10)):
 # # Example usage
 # x_train, y_train, x_test, y_test = mnist()
 
-# print(x_train.shape)
-# print(y_train.shape)
-
-
 
 def normalize(image):
     # into 0-1 range
@@ -105,11 +101,11 @@ def return_panels(width, height):
     panels[8] = imgs[8][3].reshape((28,28))
     panels[1] = imgs[1][3].reshape((28,28))
 
-    print(panels[0])
-    print()
-    print(panels[0].numpy())
-    panels[8] = imgs[8][3].reshape((28,28))
-    panels[1] = imgs[1][3].reshape((28,28))
+    # print(panels[0])
+    # print()
+    # print(panels[0].numpy())
+    # panels[8] = imgs[8][3].reshape((28,28))
+    # panels[1] = imgs[1][3].reshape((28,28))
 
     panels = np.array([ resize(panel.numpy(), (setting['base'],setting['base'])) for panel in panels])
 
@@ -171,12 +167,74 @@ def int_to_binary(n, max_bits):
 
 
 
+all_combis = []
+
+##  actions: push_up: 0, push_down: 1, push_left: 2, push_right: 3
+#
+
+### 0 at the corner ####
+# 0 at top left
+all_combis.append([0, 1])
+all_combis.append([0, 3])
+
+# top middle
+all_combis.append([1, 1])
+all_combis.append([1, 2])
+all_combis.append([1, 3])
+
+# 0 at top right
+all_combis.append([2, 1])
+all_combis.append([2, 2])
+
+# left middle
+all_combis.append([3, 0])
+all_combis.append([3, 1])
+all_combis.append([3, 3])
+
+### 0 at the middle
+all_combis.append([4, 0]) # 0 in middle
+all_combis.append([4, 1])
+all_combis.append([4, 2])
+all_combis.append([4, 3])
+
+# right middle
+all_combis.append([5, 0])
+all_combis.append([5, 1])
+all_combis.append([5, 2])
+
+# 0 at bottom left
+all_combis.append([6, 0])
+all_combis.append([6, 3])
+
+# bottom middle 
+all_combis.append([7, 0])
+all_combis.append([7, 2])
+all_combis.append([7, 3])
+
+# 0 at bottom right
+all_combis.append([8, 0])
+all_combis.append([8, 2])
+
+
+##  actions: push_up: 0, push_down: 1, push_left: 2, push_right: 3
+
+
+
+# 1) tu combine les 2 vect, donc now (5000, 2) where at index i 0 we habe the pos0 and at i 1 the action_move
+
+# 2) turn this combined vector into a (5000, 24) vector where at index i we have a one-hot repre of pos0 and action_move
+
+# 3) for the one-hot repr we do a one hot repr of the index of value [pos0, actionmove] from all_combis
+
+
+
 
 def load_puzzle(type, width, height, num_examples, objects, parameters, one_hot=False):
     
     import importlib
     generator = 'latplan.puzzles.puzzle_{}'.format(type)
     parameters["generator"] = generator
+
     #
     p = importlib.import_module(generator)
     #print(p) # <module 'latplan.puzzles.puzzle_mnist' from '/workspace/latplanClonedEnforce/latplan/puzzles/puzzle_mnist.py'>
@@ -184,9 +242,12 @@ def load_puzzle(type, width, height, num_examples, objects, parameters, one_hot=
     p.setup()
     path = os.path.join(latplan.__path__[0],"puzzles","-".join(map(str,["puzzle",type,width,height]))+".npz")
     
+
+    # 
     with np.load(path) as data:
-        pres_configs = data['pres'][:num_examples]
+        pres_configs = data['pres'][:num_examples] # numpy, (5000, 9)
         sucs_configs = data['sucs'][:num_examples]
+
 
     ##################################################################
     # determining the Symbolic repr of the actions (l/r/t/d and pos0)
@@ -197,6 +258,8 @@ def load_puzzle(type, width, height, num_examples, objects, parameters, one_hot=
     permuted_tensor = one_hot_repr.permute(0, 2, 1)
     right_pres_configs = permuted_tensor.argmax(dim=2)
 
+    # right_pres_configs[0] = tensor([4, 6, 7, 3, 5, 1, 2, 0, 8])
+    #      = configuration of example 0 (of the pres), in the good order (from top left to bottom right)
 
     tensor_sucs_configs = torch.tensor(sucs_configs)
     one_hot_repr = F.one_hot(tensor_sucs_configs.to(torch.int64), num_classes=3*3)
@@ -207,19 +270,22 @@ def load_puzzle(type, width, height, num_examples, objects, parameters, one_hot=
     zero_positions_pres = torch.tensor([torch.where(vec == 0)[0].item() for vec in right_pres_configs])
     zero_positions_sucs = torch.tensor([torch.where(vec == 0)[0].item() for vec in right_sucs_configs])
 
+    # zero_positions_pres[0] = tensor(7)  (see right_pres_configs[0] above)
+
+
     # now, for each pair, determine the action's label (l/r/t/p)
 
-    pres_minus_three = zero_positions_pres - 3
-    pres_plus_three = zero_positions_pres + 3
-    pres_plus_one = zero_positions_pres + 1
-    pres_minus_one = zero_positions_pres - 1
+    pres_minus_three = zero_positions_pres - 3 # returns the position of the zero IF top move
+    pres_plus_three = zero_positions_pres + 3  # returns the position of the zero IF down move
+    pres_plus_one = zero_positions_pres + 1    # returns the position of the zero IF right move
+    pres_minus_one = zero_positions_pres - 1   # returns the position of the zero IF left move
 
 
+    # just a zeros' vector of size (5000, 1)
     all_actions = torch.zeros_like(zero_positions_pres, dtype=torch.int)
 
-       
-    top_moves = pres_minus_three == zero_positions_sucs # at each index says if true or false
-    down_moves = pres_plus_three == zero_positions_sucs # at each index says if true or false
+    top_moves = pres_minus_three == zero_positions_sucs # at each index of the dataset says if TOP MOVE true (or false)
+    down_moves = pres_plus_three == zero_positions_sucs # ETC
     right_moves = pres_plus_one == zero_positions_sucs
     left_moves = pres_minus_one == zero_positions_sucs
 
@@ -230,49 +296,55 @@ def load_puzzle(type, width, height, num_examples, objects, parameters, one_hot=
     all_actions[left_moves] = 2
     all_actions[right_moves] = 3
 
-    # 0 0 0  0
-    # 0 0 1  1
-    # 0 1 0  2
-    # 0 1 1  3
-    # 1 0 0  4
-    # 1 0 1  5
-    # 1 1 0  6
-    # 1 1 1  7
+    # all_actions is now a (5000, 1) vector WHERE each value at index i is the move that was performed
+    # for transition i, e.g. 2 at position 42 means that a left move was performed on transitions number 42 (starting from 0)
 
 
-    print("actions")
-    print(all_actions[:5])
 
+    pos_and_move = torch.stack((zero_positions_pres, all_actions), dim=1)
+
+
+
+    indices = []
+    for row in pos_and_move:
+        for idx, item in enumerate(all_combis):
+            if torch.all(row == torch.tensor(item)):
+                indices.append(idx)
+                break
+
+    actions_indexes = torch.tensor(indices)
+
+
+    actions_one_hot = F.one_hot(actions_indexes, num_classes=24)
+    # shape (5000, 24)
+
+    # 
     all_actions_binary_representation = [int_to_binary(action.item(), 2) for action in all_actions]
-
-    # [[1, 1], [1, 0], [0, 1], [1, 0], [0, 0]]
-    print(all_actions_binary_representation[:5])
-
-
+    # all_actions_binary_representation[:5] = [[1, 1], [1, 0], [0, 1], [1, 0], [0, 0]]
 
     zero_positions_pres_binary_representation = [int_to_binary(pres.item(), 4) for pres in zero_positions_pres]
 
-    print(zero_positions_pres_binary_representation[:5])
+    # zero_positions_pres_binary_representation[:5] : [[0, 1, 1, 1], [0, 1, 0, 0], 
+    #                                                       [0, 0, 1, 0], [0, 1, 0, 1], [1, 0, 0, 0]]
+    
+
+    # 
+    actions_transitions_binary_repr = [a + b for a, b in zip(zero_positions_pres_binary_representation, all_actions_binary_representation)]
 
 
-    # each action for a transition is described by the position of "0" and the type of move (1, 2, 3 or 4)
-    # so actions_transitions[0] could be like [7, 2], i.e. initial "0" position is 7 and a down move
-    #actions_transitions = torch.stack((zero_positions_pres, all_actions), dim=-1)
+    #actions_transitions[:5] = [[0, 1, 1, 1, 1, 1], [0, 1, 0, 0, 1, 0], [0, 0, 1, 0, 0, 1],
+    #                            zero_pos  , action_mov
 
-    #actions_transitions = torch.stack((zero_positions_pres_binary_representation, all_actions_binary_representation), dim=-1)
 
-    actions_transitions = [a + b for a, b in zip(zero_positions_pres_binary_representation, all_actions_binary_representation)]
 
-    # actions_transitions should in the end be np.array([ [011101] ....  ])
+    actions_transitions_binary_repr = np.array(actions_transitions_binary_repr)
 
-    print(actions_transitions[:5])
 
-    # here [[0, 1, 1, 1, 1, 1], .... ] each element describe first the position of "0" and the 2nde the action 
-    # so "0" at position [0, 1, 1, 1] = 7 and action is 3 i.e. push right
 
-    actions_transitions = np.array(actions_transitions)
-
-    print("stacked")
+    if one_hot:
+        actions_transitions = actions_one_hot.numpy()
+    else:
+        actions_transitions = actions_transitions_binary_repr
 
 
    
@@ -309,6 +381,7 @@ def load_puzzle(type, width, height, num_examples, objects, parameters, one_hot=
         transitions, states = normalize_transitions_objects(pres,sucs,new_params=parameters)
     else:
         transitions, states = normalize_transitions(pres, sucs)
+
     return  transitions, actions_transitions, states
 
 
@@ -324,6 +397,7 @@ def return_transitions():
 
 def return_transitions_one_hot():
 
-    transitions, actions_transitions, states = load_puzzle("mnist", 3, 3, 5000, False, parameters,  one_hot=true)
+    transitions, actions_transitions, states = load_puzzle("mnist", 3, 3, 1000, False, parameters,  one_hot=True)
 
     return transitions, actions_transitions
+
