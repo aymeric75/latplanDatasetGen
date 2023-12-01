@@ -85,6 +85,7 @@ def generate(configs, width, height, **kwargs):
                 # One-hot encode configs
                 configs_one_hot = F.one_hot(x.to(torch.int64), num_classes=self.width*self.height)
                 matches = configs_one_hot.permute(0, 2, 1)
+                print("matcheees")
                 #matches = configs_one_hot.permute(0, 1, 2)
                 
                 

@@ -177,19 +177,26 @@ all_combis = []
 all_combis.append([0, 1])
 all_combis.append([0, 3])
 
+
 # top middle
 all_combis.append([1, 1])
 all_combis.append([1, 2])
 all_combis.append([1, 3])
 
+
 # 0 at top right
 all_combis.append([2, 1])
 all_combis.append([2, 2])
+
+
+
 
 # left middle
 all_combis.append([3, 0])
 all_combis.append([3, 1])
 all_combis.append([3, 3])
+
+
 
 ### 0 at the middle
 all_combis.append([4, 0]) # 0 in middle
@@ -197,24 +204,48 @@ all_combis.append([4, 1])
 all_combis.append([4, 2])
 all_combis.append([4, 3])
 
+
+
+
 # right middle
 all_combis.append([5, 0])
 all_combis.append([5, 1])
 all_combis.append([5, 2])
 
+
 # 0 at bottom left
 all_combis.append([6, 0])
 all_combis.append([6, 3])
+
+
 
 # bottom middle 
 all_combis.append([7, 0])
 all_combis.append([7, 2])
 all_combis.append([7, 3])
 
+
+
+
+
 # 0 at bottom right
 all_combis.append([8, 0])
 all_combis.append([8, 2])
 
+
+all_combis_augmented = [] # = the other 8 digit susceptible to be switched, for each action
+
+for combi in all_combis:
+    for i in range(1, 9):
+        lol = np.copy(combi)
+        lol = np.append(lol, i)
+        all_combis_augmented.append(lol)
+
+
+print("all_combis_augmented")
+print(all_combis_augmented)
+
+print(len(all_combis_augmented)) # 192
 
 ##  actions: push_up: 0, push_down: 1, push_left: 2, push_right: 3
 
@@ -226,27 +257,115 @@ all_combis.append([8, 2])
 
 # 3) for the one-hot repr we do a one hot repr of the index of value [pos0, actionmove] from all_combis
 
+# from a position of 0 (NO, actually, from a config)
+# returns a list of two elements:
+# the next pos of 0 and the label's action performed (from 0 to 3)
+# the action and the next position are legal
+def perform_random_action(config):
 
+    pos0 = config.index(0)
 
+    all_combis = []
 
-def load_puzzle(type, width, height, num_examples, objects, parameters, one_hot=False):
-    
-    import importlib
-    generator = 'latplan.puzzles.puzzle_{}'.format(type)
-    parameters["generator"] = generator
-
+    ##  actions: push_up: 0, push_down: 1, push_left: 2, push_right: 3
     #
-    p = importlib.import_module(generator)
-    #print(p) # <module 'latplan.puzzles.puzzle_mnist' from '/workspace/latplanClonedEnforce/latplan/puzzles/puzzle_mnist.py'>
-    
-    p.setup()
-    path = os.path.join(latplan.__path__[0],"puzzles","-".join(map(str,["puzzle",type,width,height]))+".npz")
-    
 
-    # 
-    with np.load(path) as data:
-        pres_configs = data['pres'][:num_examples] # numpy, (5000, 9)
-        sucs_configs = data['sucs'][:num_examples]
+    ### 0 at the corner ####
+    # 0 at top left
+    all_combis.append([0, 1])
+    all_combis.append([0, 3])
+
+    # top middle
+    all_combis.append([1, 1])
+    all_combis.append([1, 2])
+    all_combis.append([1, 3])
+
+    # 0 at top right
+    all_combis.append([2, 1])
+    all_combis.append([2, 2])
+
+    # left middle
+    all_combis.append([3, 0])
+    all_combis.append([3, 1])
+    all_combis.append([3, 3])
+
+    ### 0 at the middle
+    all_combis.append([4, 0]) # 0 in middle
+    all_combis.append([4, 1])
+    all_combis.append([4, 2])
+    all_combis.append([4, 3])
+
+    # right middle
+    all_combis.append([5, 0])
+    all_combis.append([5, 1])
+    all_combis.append([5, 2])
+
+    # 0 at bottom left
+    all_combis.append([6, 0])
+    all_combis.append([6, 3])
+
+    # bottom middle 
+    all_combis.append([7, 0])
+    all_combis.append([7, 2])
+    all_combis.append([7, 3])
+
+    # 0 at bottom right
+    all_combis.append([8, 0])
+    all_combis.append([8, 2])
+
+    all_combis = np.array(all_combis)
+    indices = np.where(all_combis[:, 0] == pos0)
+
+    result = all_combis[indices]
+
+    #print(result)
+
+    action_and_next = []
+
+    # actions: push_up: 0, push_down: 1, push_left: 2, push_right: 3
+    for app in result:
+
+        if app[1] == 0:
+            next_pos = app[0] - 3
+
+        if app[1] == 1:
+            next_pos = app[0] + 3
+
+        if app[1] == 2:
+            next_pos = app[0] - 1
+
+        if app[1] == 3:
+            next_pos = app[0] + 1
+
+        if next_pos >= 0 and next_pos < 9:
+            # is valid
+            action_and_next.append([next_pos, app[1]])
+
+    import random
+
+    random_item = random.choice(action_and_next)
+
+    nextPos0 = random_item[0]
+
+    new_config = np.copy(np.array(config))
+
+    new_config[pos0], new_config[nextPos0] = config[nextPos0], config[pos0]
+
+    return new_config, random_item[1]
+
+    # from pos0 , prend toutes les actions "applicables" (où pos0 est à gauche)
+
+    # if action==1 (push_down), add 3 to the pos, (if still between 0-9 ok)...
+    #    keep this action (in memoty)
+
+    # among all still valid actions (and where they lead to ) choose one randomly
+
+    # return the action label et the next pos0
+
+
+
+# fonction qui retourne les images à partir de config
+def from_pairs_of_confis_to_onehotaction_repr(pres_configs, sucs_configs, augmented=False):
 
 
     ##################################################################
@@ -254,9 +373,9 @@ def load_puzzle(type, width, height, num_examples, objects, parameters, one_hot=
     ##################################################################
 
     tensor_pres_configs = torch.tensor(pres_configs)
-    one_hot_repr = F.one_hot(tensor_pres_configs.to(torch.int64), num_classes=3*3)
-    permuted_tensor = one_hot_repr.permute(0, 2, 1)
-    right_pres_configs = permuted_tensor.argmax(dim=2)
+    one_hot_repr = F.one_hot(tensor_pres_configs.to(torch.int64), num_classes=3*3) # all items of pres_configs turned into one-hot
+    permuted_tensor = one_hot_repr.permute(0, 2, 1) # rows become columns
+    right_pres_configs = permuted_tensor.argmax(dim=2) # see just below
 
     # right_pres_configs[0] = tensor([4, 6, 7, 3, 5, 1, 2, 0, 8])
     #      = configuration of example 0 (of the pres), in the good order (from top left to bottom right)
@@ -275,6 +394,7 @@ def load_puzzle(type, width, height, num_examples, objects, parameters, one_hot=
 
     # now, for each pair, determine the action's label (l/r/t/p)
 
+    ## over all pairs, determine the possible position of 0 in the next state
     pres_minus_three = zero_positions_pres - 3 # returns the position of the zero IF top move
     pres_plus_three = zero_positions_pres + 3  # returns the position of the zero IF down move
     pres_plus_one = zero_positions_pres + 1    # returns the position of the zero IF right move
@@ -290,33 +410,223 @@ def load_puzzle(type, width, height, num_examples, objects, parameters, one_hot=
     left_moves = pres_minus_one == zero_positions_sucs
 
     # actions: 0: top, 1: down, 2: left, 3: right
-
+    # on a 0s vector (all_actions) applies 0, 1, 2 or 3 according to the thruth masks above
     all_actions[top_moves] = 0 
     all_actions[down_moves] = 1
     all_actions[left_moves] = 2
     all_actions[right_moves] = 3
 
-    # all_actions is now a (5000, 1) vector WHERE each value at index i is the move that was performed
+    # all_actions is now a (5000, 1) vector WHERE each value at index i is the move (0 1 2 3 for t/d/l/r) that was performed
     # for transition i, e.g. 2 at position 42 means that a left move was performed on transitions number 42 (starting from 0)
 
+    # if the action is 0 (top), look at the digit at position pos0-3
+    # if "  "   "  "   1  (down), "  "   "  "   "  "   "  "   pos0+3
+    # if "  "   "  "   2  (left), "   "  "   "  "   "  "   "  pos0-1
+    # if "  "   "  "   3  (right), "   "  "   "  "   "  "   " pos0+1
+    #    for above, look into right_sucs_configs
+
+    print(right_sucs_configs.shape)
+    print(zero_positions_pres.shape)
+
+    print("zero_neighbour_to_move")
+    x = zero_positions_pres[:, None]
+    neighbours = torch.gather(right_sucs_configs, 1, x).squeeze()
+    #neighbours = right_sucs_configs.gather(1, zero_positions_pres.unsqueeze(1)) # shape (5000, 1)
 
 
+    # now we augment the all_actions with the position of the 0
     pos_and_move = torch.stack((zero_positions_pres, all_actions), dim=1)
 
 
+    if augmented:
+        # Concatenating A and B_reshaped along the second axis (dim=1)
+        pos_and_move = torch.cat((pos_and_move, neighbours.unsqueeze(1)), dim=1)
+
+    print("right_pres_configs")
+    print(right_pres_configs)
+    print("right_sucs_configs")
+    print(right_sucs_configs)
+
+    print("pos_and_move_shape")
+    print(pos_and_move.shape) # = torch.Size([5000, 2])
+    print(pos_and_move[0]) # = tensor([7, 3])
+    print(pos_and_move)
+
+
+    # # TEST to see if number of a combinations is equal to the number of
+    # # the <=> one hot label (see below)
+    # print("hhhh")
+    # target_tensor = torch.tensor([1, 1, 1])
+    # occurrences = torch.sum(torch.all(pos_and_move == target_tensor, dim=1)).item()
+    # print(occurrences) # 179
+
 
     indices = []
+
+    # in pos_and_move at each line, there is a desc of an action (e.g. [3, 0, 5])
     for row in pos_and_move:
-        for idx, item in enumerate(all_combis):
-            if torch.all(row == torch.tensor(item)):
-                indices.append(idx)
-                break
+        if augmented:
+            for idx, item in enumerate(all_combis_augmented):
+                if torch.all(row == torch.tensor(item)):
+                    indices.append(idx)
+                    break
+        else:
+            for idx, item in enumerate(all_combis):
+                if torch.all(row == torch.tensor(item)):
+                    indices.append(idx)
+                    break
+
+    
 
     actions_indexes = torch.tensor(indices)
 
+    if augmented:
+        actions_one_hot = F.one_hot(actions_indexes, num_classes=192)
+    else:
+        actions_one_hot = F.one_hot(actions_indexes, num_classes=24)
 
-    actions_one_hot = F.one_hot(actions_indexes, num_classes=24)
-    # shape (5000, 24)
+    print(actions_one_hot.shape) # torch.Size([5000, 24]) or torch.Size([5000, 192])
+    summed = torch.sum(actions_one_hot, dim=0)
+    print(summed)
+
+
+    return actions_one_hot, all_actions, zero_positions_pres
+
+
+
+#onehot_actions = from_pairs_of_confis_to_onehotaction_repr(pres_configs_0, sucs_configs_0)
+
+
+
+
+def return_images_from_configs(pres_configs, sucs_configs):
+
+    import importlib
+    generator = 'latplan.puzzles.puzzle_{}'.format("mnist")
+    parameters["generator"] = generator
+
+    p = importlib.import_module(generator)
+
+    p.setup()
+    
+    width=3
+    height=3
+
+    pres = p.states(width, height, pres_configs)[:,:,:,None]
+    sucs = p.states(width, height, sucs_configs)[:,:,:,None]
+   
+
+    B, H, W, C = pres.shape
+    parameters["picsize"]        = [[H,W]]
+
+    transitions, states = normalize_transitions(pres, sucs)
+
+    return transitions
+
+
+
+
+
+
+
+# # [0,1,2,3,4,5,6,7,8]
+# # [0,1,2,3,4,5,6,7,8]
+# # actions: push_up: 0, push_down: 1, push_left: 2, push_right: 3
+# #print(perform_random_action([0,1,2,3,4,5,6,7,8]))
+
+# # 1) just loop and stack configs
+# whole_trace = []
+
+# last_conf = [0,1,2,3,4,5,6,7,8]
+# whole_trace.append(last_conf)
+# for i in range(5):
+#     last_conf, _ = perform_random_action(list(last_conf))
+#     whole_trace.append(list(last_conf))
+
+# #pres_configs and sucs_configs
+# pres_configs_0 = whole_trace[:-1]
+# sucs_configs_0 = whole_trace[1:]
+
+# # 2) then from pres_configs and sucs_configs we can gen i) images and ii) onehotactions
+# actions_one_hot, all_actions, zero_positions_pres = from_pairs_of_confis_to_onehotaction_repr(pres_configs_0, sucs_configs_0)
+
+# images = return_images_from_configs(pres_configs_0, sucs_configs_0)
+
+# print(actions_one_hot[2])
+# #print(images[0])
+
+# print(pres_configs_0[2])
+# plot_image(images[2][0], "2PRES.png")
+
+
+# print(sucs_configs_0[2])
+# plot_image(images[2][1], "2SUCS.png")
+
+
+
+def load_puzzle(type, width, height, num_examples, objects, parameters, one_hot=False, augmented=False, custom=False):
+    
+    import importlib
+    generator = 'latplan.puzzles.puzzle_{}'.format(type)
+    parameters["generator"] = generator
+
+    #
+    p = importlib.import_module(generator)
+    #print(p) # <module 'latplan.puzzles.puzzle_mnist' from '/workspace/latplanClonedEnforce/latplan/puzzles/puzzle_mnist.py'>
+    
+    p.setup()
+    path = os.path.join(latplan.__path__[0],"puzzles","-".join(map(str,["puzzle",type,width,height]))+".npz")
+    
+    # 0 at any pos
+
+    #   then exchange with pos0 + 3 , -3 , +1, -1
+
+    # for each pos of 0
+    pres_configs_custom = []
+    sucs_configs_custom = []
+
+    for pos in range(9):
+
+        # for each action (+3, -3 etc)
+        for ac in [3, -3, 1, -1]:
+
+            # check if next move is valid
+            if pos+ac < 9 and pos+ac >=0:
+                
+
+                # sample X combinations <=> pos0 + move
+                for s in range(100):
+
+                    prim = np.arange(1, 9)
+                    np.random.shuffle(prim)
+                    tmp_pre = np.insert(prim, pos, 0)
+                    tmp_suc = tmp_pre.copy()
+                    tmp_suc[pos], tmp_suc[pos+ac] = tmp_pre[pos+ac], tmp_pre[pos]
+                    pres_configs_custom.append(tmp_pre)
+                    sucs_configs_custom.append(tmp_suc)
+
+
+    #           shuffle 100 times the other digits ==> gives the pre, the exchange with the action, gives the sucs
+    # 
+    with np.load(path) as data:
+        pres_configs = data['pres'][:num_examples] # numpy, (5000, 9)
+        sucs_configs = data['sucs'][:num_examples]
+
+    if custom:
+        print("custom true")
+        pres_configs = pres_configs_custom
+        sucs_configs = sucs_configs_custom
+   
+    # take all the transitions that reprensent pos0 + move_smwhere 
+
+    #     compute the sum of the transitiosn
+
+    #            check in the one_hot_encod finale vector IF there is also the same number of this type of transitions
+
+    #             
+
+
+    actions_one_hot, all_actions, zero_positions_pres = from_pairs_of_confis_to_onehotaction_repr(pres_configs, sucs_configs, augmented=augmented)
 
     # 
     all_actions_binary_representation = [int_to_binary(action.item(), 2) for action in all_actions]
@@ -346,33 +656,41 @@ def load_puzzle(type, width, height, num_examples, objects, parameters, one_hot=
     else:
         actions_transitions = actions_transitions_binary_repr
 
-
    
     ##################################################################
     #                           THE END                              #
     ##################################################################
     
-
-
+    # right_sucs_configs
     pres = p.states(width, height, pres_configs)[:,:,:,None]
     sucs = p.states(width, height, sucs_configs)[:,:,:,None]
    
+    print()
+    print(sucs_configs_custom[:3])
+    print()
+    print(sucs_configs[:3])
     print("config du puzzle")
     print()
-    print(pres_configs[2])
-    plot_image(pres[2], "2PRES.png")
+    print(pres_configs[0])
+    plot_image(pres[0], "0PRES.png")
 
 
-    print(sucs_configs[2])
-    plot_image(sucs[2], "2SUCS.png")
+    print(sucs_configs[0])
+    plot_image(sucs[0], "0SUCS.png")
 
-   
+    print('the f*** action')
+    aaaa = np.array(actions_transitions[0]).squeeze()
+    print(np.where(aaaa == 1))
+    exit()
+    print(all_combis_augmented[8])
+    # actions: push_up: 0, push_down: 1, push_left: 2, push_right: 3
 
     B, H, W, C = pres.shape
     parameters["picsize"]        = [[H,W]]
     print("loaded. picsize:",[H,W])
 
     if objects:
+
         pres = image_to_tiled_objects(pres, p.setting['base'])
         sucs = image_to_tiled_objects(sucs, p.setting['base'])
         bboxes = tiled_bboxes(B, height, width, p.setting['base'])
@@ -395,9 +713,11 @@ def return_transitions():
 
 
 
-def return_transitions_one_hot():
+def return_transitions_one_hot(augmented=False, custom=False):
 
-    transitions, actions_transitions, states = load_puzzle("mnist", 3, 3, 1000, False, parameters,  one_hot=True)
+    transitions, actions_transitions, states = load_puzzle("mnist", 3, 3, 5000, False, parameters,  one_hot=True, augmented=augmented, custom=custom)
 
     return transitions, actions_transitions
+
+
 
