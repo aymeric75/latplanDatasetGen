@@ -244,6 +244,9 @@ for combi in all_combis:
 
 print("all_combis_augmented")
 print(all_combis_augmented)
+print("all_combis_augmentedlol")
+
+print(all_combis_augmented[41])
 
 print(len(all_combis_augmented)) # 192
 
@@ -364,33 +367,61 @@ def perform_random_action(config):
 
 
 
-# fonction qui retourne les images à partir de config
-def from_pairs_of_confis_to_onehotaction_repr(pres_configs, sucs_configs, augmented=False):
+# fonction qui retourne les actions à partir de config
+def from_pairs_of_confis_to_onehotaction_repr(pres_configs, sucs_configs, augmented=False, custom=False):
 
 
     ##################################################################
     # determining the Symbolic repr of the actions (l/r/t/d and pos0)
     ##################################################################
-
+    print("pres_configspres_configspres_configspres_configspres_configspres_configspres_configspres_configspres_configspres_configs")
+    
     tensor_pres_configs = torch.tensor(pres_configs)
+    
     one_hot_repr = F.one_hot(tensor_pres_configs.to(torch.int64), num_classes=3*3) # all items of pres_configs turned into one-hot
-    permuted_tensor = one_hot_repr.permute(0, 2, 1) # rows become columns
+    if not custom:
+        permuted_tensor = one_hot_repr.permute(0, 2, 1) # TO USE FOR DEFAULT DATASET 
+    else:
+        permuted_tensor = one_hot_repr.permute(0, 1, 2) # TO USE FOR CUSTOM DATASET 
     right_pres_configs = permuted_tensor.argmax(dim=2) # see just below
+
+    print("right_pres_configs")
+    print(right_pres_configs[0])
+    print(right_pres_configs.size())
+    
 
     # right_pres_configs[0] = tensor([4, 6, 7, 3, 5, 1, 2, 0, 8])
     #      = configuration of example 0 (of the pres), in the good order (from top left to bottom right)
 
     tensor_sucs_configs = torch.tensor(sucs_configs)
+
+
     one_hot_repr = F.one_hot(tensor_sucs_configs.to(torch.int64), num_classes=3*3)
-    permuted_tensor = one_hot_repr.permute(0, 2, 1)
+    if not custom:
+        permuted_tensor = one_hot_repr.permute(0, 2, 1) # TO USE FOR DEFAULT DATASET 
+    else:
+        permuted_tensor = one_hot_repr.permute(0, 1, 2) # TO USE FOR CUSTOM DATASET
     right_sucs_configs = permuted_tensor.argmax(dim=2)
+
+    print("right_sucs_configs")
+    print(right_sucs_configs[0])
 
     # for each pair, determine the pos of the 0
     zero_positions_pres = torch.tensor([torch.where(vec == 0)[0].item() for vec in right_pres_configs])
     zero_positions_sucs = torch.tensor([torch.where(vec == 0)[0].item() for vec in right_sucs_configs])
 
-    # zero_positions_pres[0] = tensor(7)  (see right_pres_configs[0] above)
+    print("zero_positions_pres")
+    print(zero_positions_pres[600])
 
+    print()
+
+    print("zero_positions_sucs")
+    print(zero_positions_sucs[600])
+
+    print()
+
+
+    # zero_positions_pres[0] = tensor(7)  (see right_pres_configs[0] above)
 
     # now, for each pair, determine the action's label (l/r/t/p)
 
@@ -404,10 +435,37 @@ def from_pairs_of_confis_to_onehotaction_repr(pres_configs, sucs_configs, augmen
     # just a zeros' vector of size (5000, 1)
     all_actions = torch.zeros_like(zero_positions_pres, dtype=torch.int)
 
+    print("pres_minus_three")
+    print(pres_minus_three[600]) # tensor([-3, -3, -3])
+
+    print("pres_plus_one")
+    print(pres_plus_one[600]) # tensor([1, 1, 1])
+
+    print("pres_minus_one")
+    print(pres_minus_one[600])
+
+
     top_moves = pres_minus_three == zero_positions_sucs # at each index of the dataset says if TOP MOVE true (or false)
     down_moves = pres_plus_three == zero_positions_sucs # ETC
     right_moves = pres_plus_one == zero_positions_sucs
     left_moves = pres_minus_one == zero_positions_sucs
+
+    print("top_moves[600]")
+    print(top_moves[600])
+
+    print("right_moves[600]")
+    print(right_moves[600])
+
+
+    print("left_moves[600]")
+    print(left_moves[600])
+
+
+    print("down_moves[600]")
+    print(down_moves[600])
+
+    print("ggggg")
+    print(all_actions[600])
 
     # actions: 0: top, 1: down, 2: left, 3: right
     # on a 0s vector (all_actions) applies 0, 1, 2 or 3 according to the thruth masks above
@@ -415,6 +473,9 @@ def from_pairs_of_confis_to_onehotaction_repr(pres_configs, sucs_configs, augmen
     all_actions[down_moves] = 1
     all_actions[left_moves] = 2
     all_actions[right_moves] = 3
+
+    print("theallactions0000000000")
+    print(all_actions[600])
 
     # all_actions is now a (5000, 1) vector WHERE each value at index i is the move (0 1 2 3 for t/d/l/r) that was performed
     # for transition i, e.g. 2 at position 42 means that a left move was performed on transitions number 42 (starting from 0)
@@ -425,33 +486,46 @@ def from_pairs_of_confis_to_onehotaction_repr(pres_configs, sucs_configs, augmen
     # if "  "   "  "   3  (right), "   "  "   "  "   "  "   " pos0+1
     #    for above, look into right_sucs_configs
 
-    print(right_sucs_configs.shape)
-    print(zero_positions_pres.shape)
-
-    print("zero_neighbour_to_move")
+    print("zero_positions_pres")
+    print(zero_positions_pres[0])
+    print("iiiii")
+    print(right_sucs_configs[0])
+    # tensor([8, 5, 6, 3, 0, 4, 1, 2, 7])
     x = zero_positions_pres[:, None]
     neighbours = torch.gather(right_sucs_configs, 1, x).squeeze()
+
+    print(neighbours[0])
+    print("neighsssss")
+
     #neighbours = right_sucs_configs.gather(1, zero_positions_pres.unsqueeze(1)) # shape (5000, 1)
 
+    print("kkk")
+    print(all_actions.shape) # 2800
+    print(zero_positions_pres.shape)
+    print("theallactions")
+    print(all_actions[:3]) # [3, 3, 0] DEVRAIT ETRE [3, 3, 1]
 
+
+    
     # now we augment the all_actions with the position of the 0
     pos_and_move = torch.stack((zero_positions_pres, all_actions), dim=1)
+
+
+    print("pos_and_move size 1")
+    print(pos_and_move.size())
+    print(pos_and_move[600])
 
 
     if augmented:
         # Concatenating A and B_reshaped along the second axis (dim=1)
         pos_and_move = torch.cat((pos_and_move, neighbours.unsqueeze(1)), dim=1)
 
-    print("right_pres_configs")
-    print(right_pres_configs)
-    print("right_sucs_configs")
-    print(right_sucs_configs)
+        # pos_and_move[0] est [4 0 0] càd tile milieu, push up et un 0 en haut
+        # donc neighbours n'est pas bon
 
-    print("pos_and_move_shape")
-    print(pos_and_move.shape) # = torch.Size([5000, 2])
-    print(pos_and_move[0]) # = tensor([7, 3])
-    print(pos_and_move)
 
+    print("pos_and_move size 2")
+    print(pos_and_move.size())
 
     # # TEST to see if number of a combinations is equal to the number of
     # # the <=> one hot label (see below)
@@ -463,13 +537,24 @@ def from_pairs_of_confis_to_onehotaction_repr(pres_configs, sucs_configs, augmen
 
     indices = []
 
+    print("ooo")
+    print(len(all_combis_augmented)) # 192
+    print(len(all_combis)) # 24
+
     # in pos_and_move at each line, there is a desc of an action (e.g. [3, 0, 5])
-    for row in pos_and_move:
+    for ccc, row in enumerate(pos_and_move):
         if augmented:
+            smth_was_found=False
             for idx, item in enumerate(all_combis_augmented):
                 if torch.all(row == torch.tensor(item)):
+                    #print("idx = {}".format(str(idx)))
+                    #print("ccc : {}".format(str(ccc)))
                     indices.append(idx)
+                    smth_was_found=True
                     break
+            if not smth_was_found:
+                print("therow of element {}".format(str(ccc)))
+                print(row)
         else:
             for idx, item in enumerate(all_combis):
                 if torch.all(row == torch.tensor(item)):
@@ -485,10 +570,12 @@ def from_pairs_of_confis_to_onehotaction_repr(pres_configs, sucs_configs, augmen
     else:
         actions_one_hot = F.one_hot(actions_indexes, num_classes=24)
 
-    print(actions_one_hot.shape) # torch.Size([5000, 24]) or torch.Size([5000, 192])
+    #print(actions_one_hot.shape) # torch.Size([5000, 24]) or torch.Size([5000, 192])
     summed = torch.sum(actions_one_hot, dim=0)
-    print(summed)
 
+    print("actions_one_hot")
+    print(actions_one_hot) # tensor([[0, 0, 0,  ..., 0, 0, 0],
+    print(actions_one_hot.size())
 
     return actions_one_hot, all_actions, zero_positions_pres
 
@@ -568,12 +655,17 @@ def load_puzzle(type, width, height, num_examples, objects, parameters, one_hot=
     
     import importlib
     generator = 'latplan.puzzles.puzzle_{}'.format(type)
+    #generator = '/workspace/latplanClonedEnforce/latplan.puzzles.puzzle_{}'.format(type)
     parameters["generator"] = generator
 
     #
-    p = importlib.import_module(generator)
-    #print(p) # <module 'latplan.puzzles.puzzle_mnist' from '/workspace/latplanClonedEnforce/latplan/puzzles/puzzle_mnist.py'>
     
+    p = importlib.import_module(generator)
+    print("ppppppppppppp")
+    print(p) # <module 'latplan.puzzles.puzzle_mnist' from '/workspace/latplanClonedEnforce/latplan/puzzles/puzzle_mnist.py'>
+    # 
+    # 
+    # <module 'latplan.puzzles.puzzle_mnist' from '/workspace/latplanRealOneHotActionsV2/latplan/puzzles/puzzle_mnist.py'>
     p.setup()
     path = os.path.join(latplan.__path__[0],"puzzles","-".join(map(str,["puzzle",type,width,height]))+".npz")
     
@@ -584,18 +676,26 @@ def load_puzzle(type, width, height, num_examples, objects, parameters, one_hot=
     # for each pos of 0
     pres_configs_custom = []
     sucs_configs_custom = []
+    
+
+    # pos+ac entre 0 et 9
+    # MAIS aussi, si pos=2, alors pos+ac peut pas être 3
+
+    # +3 uniqument pour de [0,1,2,3,4,5]
+    # -3 uniqument pour de [3,4,5,6,7,8]
+    # +1 uniqument pour de [0, 1, 3, 4, 6, 7]
+    # -1 uniqument pour de [1, 2, 4, 5, 7, 8]
 
     for pos in range(9):
 
         # for each action (+3, -3 etc)
+
         for ac in [3, -3, 1, -1]:
 
-            # check if next move is valid
-            if pos+ac < 9 and pos+ac >=0:
-                
+            if (ac == 3 and pos in [0,1,2,3,4,5]) or (ac == -3 and pos in [3,4,5,6,7,8]) or (ac == 1 and pos in [0, 1, 3, 4, 6, 7]) or (ac == -1 and pos in [1, 2, 4, 5, 7, 8]):
 
                 # sample X combinations <=> pos0 + move
-                for s in range(100):
+                for s in range(500):
 
                     prim = np.arange(1, 9)
                     np.random.shuffle(prim)
@@ -604,6 +704,12 @@ def load_puzzle(type, width, height, num_examples, objects, parameters, one_hot=
                     tmp_suc[pos], tmp_suc[pos+ac] = tmp_pre[pos+ac], tmp_pre[pos]
                     pres_configs_custom.append(tmp_pre)
                     sucs_configs_custom.append(tmp_suc)
+    import random
+    if custom:
+        indices = list(range(len(pres_configs_custom)))
+        random.shuffle(indices)
+        pres_configs_custom_shuffled = [pres_configs_custom[i] for i in indices]
+        sucs_configs_custom_shuffled = [sucs_configs_custom[i] for i in indices]
 
 
     #           shuffle 100 times the other digits ==> gives the pre, the exchange with the action, gives the sucs
@@ -614,8 +720,8 @@ def load_puzzle(type, width, height, num_examples, objects, parameters, one_hot=
 
     if custom:
         print("custom true")
-        pres_configs = pres_configs_custom
-        sucs_configs = sucs_configs_custom
+        pres_configs = pres_configs_custom_shuffled
+        sucs_configs = sucs_configs_custom_shuffled
    
     # take all the transitions that reprensent pos0 + move_smwhere 
 
@@ -624,9 +730,13 @@ def load_puzzle(type, width, height, num_examples, objects, parameters, one_hot=
     #            check in the one_hot_encod finale vector IF there is also the same number of this type of transitions
 
     #             
+    print("pres_configs 000")
+    print(len(pres_configs)) # 2800
+    print(pres_configs[0]) # [2 4 0 1 5 7 6 3 8]
 
+    print(sucs_configs[0]) # [2 0 4 1 5 7 6 3 8]
 
-    actions_one_hot, all_actions, zero_positions_pres = from_pairs_of_confis_to_onehotaction_repr(pres_configs, sucs_configs, augmented=augmented)
+    actions_one_hot, all_actions, zero_positions_pres = from_pairs_of_confis_to_onehotaction_repr(pres_configs, sucs_configs, augmented=augmented, custom=custom)
 
     # 
     all_actions_binary_representation = [int_to_binary(action.item(), 2) for action in all_actions]
@@ -662,26 +772,29 @@ def load_puzzle(type, width, height, num_examples, objects, parameters, one_hot=
     ##################################################################
     
     # right_sucs_configs
-    pres = p.states(width, height, pres_configs)[:,:,:,None]
-    sucs = p.states(width, height, sucs_configs)[:,:,:,None]
-   
-    print()
-    print(sucs_configs_custom[:3])
-    print()
-    print(sucs_configs[:3])
-    print("config du puzzle")
-    print()
-    print(pres_configs[0])
+    pres = p.states(width, height, pres_configs, custom=custom)[:,:,:,None]
+    sucs = p.states(width, height, sucs_configs, custom=custom)[:,:,:,None]
+    
+    # !!!!!!
+    # config should not be printed from pres_configs or sucs_config here,
+    # because these are corrupted, instead they should be found inside the 
+    # from_pairs_of_confis_to_onehotaction_repr function
+    # then look at the right_pres_configs for instance
+    # !!!!!!
+    # 2 1 2
     plot_image(pres[0], "0PRES.png")
-
-
-    print(sucs_configs[0])
     plot_image(sucs[0], "0SUCS.png")
+    print("actionstrn")
+
+    #print(actions_transitions[600])
+    print("putain")
+    print(np.argmax(np.array(actions_transitions[555])))
+
 
     print('the f*** action')
-    aaaa = np.array(actions_transitions[0]).squeeze()
+    aaaa = np.array(actions_transitions[11]).squeeze()
     print(np.where(aaaa == 1))
-    exit()
+    #exit()
     print(all_combis_augmented[8])
     # actions: push_up: 0, push_down: 1, push_left: 2, push_right: 3
 
