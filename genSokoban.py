@@ -25,6 +25,8 @@ def load_sokoban(track, num_examples, parameters=None, objects=True, **kwargs):
         bboxes = data['bboxes'][:num_examples] # [B,O,4]
         picsize = data['picsize']
         print("loaded. picsize:",picsize)
+    
+    print(pres)
 
     parameters["picsize"] = [picsize.tolist()]
     parameters["generator"] = None

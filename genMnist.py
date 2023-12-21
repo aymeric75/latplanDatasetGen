@@ -4,6 +4,29 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 import imageio
+from PIL import Image
+
+
+
+def generate(ics, gcs, render_fn):
+    inits = render_fn(ics)
+    goals = render_fn(gcs)
+    print("washere000")
+    for i,(init,goal) in enumerate(zip(inits,goals)):
+        #d = "{}/{}/{:03d}-{:03d}".format(output_dir,name,steps,i)
+        d='/workspace/latplanRealOneHotActionsV2/'
+        print(d)
+        print("washere1")
+        print(init.shape)
+        print(init[15:40][10:])
+
+        # init = Image.fromarray(init)
+        # init = init.convert("L")
+        # goal = Image.fromarray(goal)
+        # goal = goal.convert("L")
+
+        imageio.imsave(os.path.join(d,"initTTT.png"),init)
+        imageio.imsave(os.path.join(d,"goalLLL.png"),goal)
 
 
 def plot_image(a,name):
@@ -535,6 +558,8 @@ def from_pairs_of_confis_to_onehotaction_repr(pres_configs, sucs_configs, augmen
     # print(occurrences) # 179
 
 
+    # hold, for each transition pair, the index of the action from the
+    # actions' label vector, i.e. from all_combis or all_combis_augmented
     indices = []
 
     print("ooo")
@@ -577,6 +602,13 @@ def from_pairs_of_confis_to_onehotaction_repr(pres_configs, sucs_configs, augmen
     print(actions_one_hot) # tensor([[0, 0, 0,  ..., 0, 0, 0],
     print(actions_one_hot.size())
 
+    actions_one_hot = torch.ones(40320, 1)
+
+    for hh in range(10, 20):
+        print("for h = {}".format(str(hh)))
+        #print(np.where(actions_one_hot.numpy()[hh] == 1)[0])
+        print(all_combis[np.where(actions_one_hot.numpy()[hh] == 1)[0][0]])
+
     return actions_one_hot, all_actions, zero_positions_pres
 
 
@@ -598,6 +630,7 @@ def return_images_from_configs(pres_configs, sucs_configs):
     
     width=3
     height=3
+    
 
     pres = p.states(width, height, pres_configs)[:,:,:,None]
     sucs = p.states(width, height, sucs_configs)[:,:,:,None]
@@ -650,6 +683,12 @@ def return_images_from_configs(pres_configs, sucs_configs):
 # plot_image(images[2][1], "2SUCS.png")
 
 
+from itertools import permutations 
+def all_orderings(adjusted_list):
+    # Adjusting the list to [1, 2, 3, 4, 5, 6, 7, 8] and creating all possible orderings
+    adjusted_list = [1, 2, 3, 4, 5, 6, 7, 8]
+    all_orderings_adjusted = list(permutations(adjusted_list))
+    return all_orderings_adjusted
 
 def load_puzzle(type, width, height, num_examples, objects, parameters, one_hot=False, augmented=False, custom=False):
     
@@ -669,6 +708,20 @@ def load_puzzle(type, width, height, num_examples, objects, parameters, one_hot=
     p.setup()
     path = os.path.join(latplan.__path__[0],"puzzles","-".join(map(str,["puzzle",type,width,height]))+".npz")
     
+
+
+    # ics = [(7, 2, 5, 0, 3, 1, 6, 4, 8), (7, 3, 2, 1, 0, 5, 6, 4, 8), (5, 3, 2, 1, 0, 4, 6, 7, 8), (3, 0, 2, 4, 1, 8, 6, 5, 7), (3, 1, 2, 0, 4, 7, 6, 8, 5), (3, 1, 5, 0, 2, 4, 6, 7, 8), (5, 0, 2, 7, 1, 4, 3, 6, 8), (1, 0, 5, 3, 2, 8, 6, 4, 7), (1, 2, 5, 0, 3, 8, 6, 4, 7), (1, 2, 5, 0, 4, 8, 3, 6, 7), (5, 4, 1, 0, 7, 2, 3, 6, 8), (7, 0, 2, 3, 1, 8, 6, 5, 4), (3, 1, 4, 0, 5, 2, 6, 7, 8), (3, 1, 2, 0, 6, 4, 7, 8, 5), (3, 5, 1, 0, 4, 2, 6, 7, 8), (1, 4, 2, 0, 5, 8, 3, 6, 7), (1, 4, 2, 0, 6, 5, 7, 3, 8), (1, 5, 4, 0, 3, 2, 6, 7, 8), (7, 1, 2, 0, 3, 8, 6, 5, 4), (5, 0, 1, 3, 7, 2, 6, 8, 4)]
+
+    # gcs are the goals    
+
+    # ics = [ (7, 2, 5, 4, 3, 1, 6, 0, 8) ]
+
+    # gcs = [ (7, 2, 5, 4, 0, 1, 6, 3, 8) ]
+
+    # generate(ics, gcs, lambda configs: p.generate(np.array(configs),width,height, custom=False))
+
+    # exit()
+
     # 0 at any pos
 
     #   then exchange with pos0 + 3 , -3 , +1, -1
@@ -688,22 +741,35 @@ def load_puzzle(type, width, height, num_examples, objects, parameters, one_hot=
 
     for pos in range(9):
 
-        # for each action (+3, -3 etc)
+        # here we only produce pre-states with 0 at center bottom
+        if pos == 7:
 
-        for ac in [3, -3, 1, -1]:
+            # for each action (+3, -3 etc)
+            #for ac in [3, -3, 1, -1]:
+            for ac in [-3]: # only up
 
-            if (ac == 3 and pos in [0,1,2,3,4,5]) or (ac == -3 and pos in [3,4,5,6,7,8]) or (ac == 1 and pos in [0, 1, 3, 4, 6, 7]) or (ac == -1 and pos in [1, 2, 4, 5, 7, 8]):
+                if (ac == 3 and pos in [0,1,2,3,4,5]) or (ac == -3 and pos in [3,4,5,6,7,8]) or (ac == 1 and pos in [0, 1, 3, 4, 6, 7]) or (ac == -1 and pos in [1, 2, 4, 5, 7, 8]):
 
-                # sample X combinations <=> pos0 + move
-                for s in range(500):
+                    # sample X combinations <=> pos0 + move
 
-                    prim = np.arange(1, 9)
-                    np.random.shuffle(prim)
-                    tmp_pre = np.insert(prim, pos, 0)
-                    tmp_suc = tmp_pre.copy()
-                    tmp_suc[pos], tmp_suc[pos+ac] = tmp_pre[pos+ac], tmp_pre[pos]
-                    pres_configs_custom.append(tmp_pre)
-                    sucs_configs_custom.append(tmp_suc)
+                    for ordering in all_orderings([1, 2, 3, 4, 5, 6, 7, 8]):                        
+
+                        tmp_pre = np.insert(ordering, pos, 0)
+                        tmp_suc = tmp_pre.copy()
+                        tmp_suc[pos], tmp_suc[pos+ac] = tmp_pre[pos+ac], tmp_pre[pos]
+                        pres_configs_custom.append(tmp_pre)
+                        sucs_configs_custom.append(tmp_suc)
+
+                    
+                    # for s in range(5000):
+
+                    #     prim = np.arange(1, 9)
+                    #     np.random.shuffle(prim)
+                    #     tmp_pre = np.insert(prim, pos, 0)
+                    #     tmp_suc = tmp_pre.copy()
+                    #     tmp_suc[pos], tmp_suc[pos+ac] = tmp_pre[pos+ac], tmp_pre[pos]
+                    #     pres_configs_custom.append(tmp_pre)
+                    #     sucs_configs_custom.append(tmp_suc)
     import random
     if custom:
         indices = list(range(len(pres_configs_custom)))
