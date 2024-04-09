@@ -1,8 +1,6 @@
 import numpy as np
 import os.path
 import itertools
-import torch
-from torchvision import datasets, transforms
 #from ..util.tuning import parameters
 #from .common import *
 #from .normalization import normalize_transitions, normalize_transitions_objects
@@ -19,29 +17,6 @@ import latplan
 from latplan.puzzles.objutil import image_to_tiled_objects, tiled_bboxes
 from latplan.main.normalization import normalize_transitions, normalize_transitions_objects
 sys.path.remove('/workspace/latplanClonedEnforce')
-import torch.nn.functional as F
-
-# [[1, 3], 1]
-def flatten(nested_list):
-    """Flatten a nested list of lists into a single list, handling nested lists at any level."""
-    flat_list = []
-    for item in nested_list:
-        if isinstance(item, list):
-            flat_list.extend(item)  # Recursively flatten each sublist
-        else:
-            flat_list.append(item)
-    return flat_list
-
-
-#################### UTIL FUNCTIONS
-
-
-# Convert to grayscale using the luminosity method
-def rgb_to_grayscale(rgb_images):
-    grayscale = np.dot(rgb_images[...,:3], [0.21, 0.72, 0.07])
-    return np.stack((grayscale,)*3, axis=-1)
-
-
 
 
 def plot_image(a,name):
@@ -51,44 +26,6 @@ def plot_image(a,name):
     plt.imshow(a)
     plt.savefig(name)
 
-
-
-def normalize_here(x, save=True):
-
-    print("HYYYYHHHHHH")
-    print(x.shape) # (40000, 30, 45, 3)
-
-    mean               = np.mean(x,axis=0)
-
-    print(mean.shape) # (30, 45, 3)
-
-    std                = np.std(x,axis=0)
-    # if save:
-    #     parameters["mean"] = [mean.tolist()]
-    #     parameters["std"]  = [std.tolist()]
-    print("normalized shape:",mean.shape,std.shape)
-    return (x - mean)/(std+1e-20), mean, std
-
-
-def normalize_transitions_here(pres,sucs):
-    """Normalize a dataset for image-based input format.
-Normalization is performed across batches."""
-    print("IN normalize_transitions HERE")
-    B, *F = pres.shape
-
-
-    transitions = np.stack([pres,sucs], axis=1) # [B, 2, F]
-    print(transitions.shape) # (50, 2, 30, 45, 3)
-    print(np.reshape(transitions, [-1, *F]).shape) # (100, 30, 45, 3)
-    
-
-    normalized, mean, std = normalize_here(np.reshape(transitions, [-1, *F])) # [2BO, F]
-    print("normies")
-    #print(normalized[:4])
-
-    states      = normalized.reshape([-1, *F])
-    transitions = states.reshape([-1, 2, *F])
-    return transitions, states, mean, std
 
 
 #### ALL POSSIBLE "CLEAR" combinations
@@ -102,16 +39,14 @@ def all_clear_combination():
 
 
 ########################################
-numbers = [0, 1, 2]
 
 #### TOWERs combinations
 def return_all_possible_towers():
     selected_permutations = []
-    for r in range(2, 4):
+    for r in range(2, 5):
         permutations = itertools.permutations(numbers, r)
         selected_permutations.extend(permutations)
     return selected_permutations
-
 
 def return_pairs_of_above_from_a_tower(tower):
     # where tower is like [3 0 1] i.e. block 3 on top of block 0 on top of block 1
@@ -133,49 +68,55 @@ def return_all_towers_and_xAboveY():
     return all_towers_xAboveY
 
 
+################################################################################
+
+# suffit de décrire les rights (les lefts sont le mirroir)
+
+#       2 blocks qui sont en colonne ne peuvent être à right l'un autre
+
+#        condition sur les rights : si a right of b alors b cannot right of a
+
+#                                           a right of b, c right of 
+
+
+
 
 # exceptions can be like [[1, 3, 2]]
 def item_has_nothing_on_left_except(lefts_list, number_or_tower, exceptions=None):
-   
-
-
     retour = True
     for i, l in enumerate(lefts_list):
         if type(number_or_tower) is list and len(number_or_tower) > 0:
             reference_block = number_or_tower[0]
         else:
             reference_block = number_or_tower
-        
-        if exceptions==None or (not exceptions):
-            #if number_or_tower == 2: print("i: {}, l: {}".format(str(i), str(l)))
+        if exceptions==None:
             if i == reference_block and l:
-                #if number_or_tower == 2: print("was heere")
                 retour = False
-                break
         else:
             if i == reference_block and l:
+                eles_not_in_exception = True
                 flatten_exceptions = flatten(exceptions)
                 for el in l:
                     if el not in flatten_exceptions:
                         retour = False
-                        break
-        
     return retour
-
 
 # all combinations of towers with 2 to 4 numbers
 #     then for each, retrieve the remaining
 
-
-import numpy as np
-
-def fromTowerAndLeftsBuildState(tower, lefts,thecount):
-    
-    #  SHOULD RETURN [2  1  0]
+# input like tower=[2, 0] and  lefts=[[1,3],[3],[1,3],[]]
+# (represents 3 1 2/0 )
+# output is [3, 1, [2, 0]]
+def fromTowerAndLeftsBuildState(tower, lefts):
+    import numpy as np
     final_state = []
     if type(tower) is list:
         if tower and len(tower) ==  2:
             if type(tower[0]) is list and type(tower[1]) is list:
+                
+                    # just determine which tower is on left of the other
+                    # take 1st element of tower 1 and see if has smth on its left
+                    #tower[0][0]
                     if lefts[tower[0][0]]:
                         final_state.append(tower[1])
                         final_state.append(tower[0])
@@ -183,45 +124,28 @@ def fromTowerAndLeftsBuildState(tower, lefts,thecount):
                         final_state.append(tower[0])
                         final_state.append(tower[1])
                     return final_state
-    
 
     # 
     remaining_elements_of_state = []
-    for i in range(3):
+    for i in range(4):
         if i not in tower:
             remaining_elements_of_state.append(i)
     if tower:     
         remaining_elements_of_state.append(tower)
 
-
     present_elements = remaining_elements_of_state.copy()
     placed_elements = []
     counter=0
-
+    # print("remaining_elements_of_state")
+    # print(remaining_elements_of_state)
     while(len(final_state) != len(present_elements)):
         #print("counter : {}".format(str(counter)))
         #print(remaining_elements_of_state)
         for el in remaining_elements_of_state:
-
             if el not in final_state and item_has_nothing_on_left_except(lefts, el, exceptions=placed_elements):
                 final_state.append(el)
                 placed_elements.append(el)
-                remaining_elements_of_state.remove(el)
-            
-            # if counter > 4:
-            #     print("on es la")
-            #     print(final_state)
-            #     print(placed_elements)
-            #     print(remaining_elements_of_state)
-            #     print(present_elements)
-            if counter > 100:
-                print("thecount {}".format(str(thecount)))
-                print(tower)
-                print(lefts)
-                return False
-                
-            counter+=1
-
+        counter+=1
     return final_state
 
 
@@ -291,12 +215,9 @@ for t in return_all_possible_towers_by_size(3):
 #     all_states.append([list(two[1]), list(two[0])])
 
 
-print(all_states[:10]) # [[0, 1, 2], [0, 2, 1]]
-# [[0, 1, 2], [0, 2, 1], [1, 0, 2], [1, 2, 0], [2, 0, 1], [2, 1, 0], ([0, 1], 2), (2, [0, 1]), ([0, 2], 1), (1, [0, 2])]
-
-# ([0, 1], 2)  == tour of a 0 and a 1 THEN the 2 on the right
 
 print(len(all_states))
+
 
 
 # 3 colored blocks
@@ -600,22 +521,16 @@ for state1 in all_states:
     for state2 in all_states:
 
         if state1 != state2:
-            #print(state1) # [0, 1, 2]
-            #print(state2)
-
             #if len(state1) ==  2 and len(state2) == 1:
             if check_if_valid_transition_BIS(state1, state2):
-                if type(state1) is tuple: state1 = list(state1)
-                if type(state2) is tuple: state2 = list(state2)
                 all_combis.append([state1, state2])
             # else:
             #     print([state1, state2])
 
 
-print("len all_combis") # 132 for 24 states (3 blocks)
+print("len all_combis")
 print(len(all_combis))
-print("all_combis")
-print(all_combis[:15]) # (1, [0, 2])     [1, 2, 0]
+exit()
 
 # 1) no tower ===> all combis
 # 2) one tower of size two : for each tower, take the rest and all combis
@@ -623,13 +538,42 @@ print(all_combis[:15]) # (1, [0, 2])     [1, 2, 0]
 # 4) two towers
 
 
+# for each state, 
+
+# the ids are 0 1 2 3
+#
+#    e.g. clears = [1, 2]
+#      xAboveY = [[1, 0], [....]] # à vérifier !!!   6 combinaisons max
+
+#     lefts = [[]]
+#                       [[1, 2], [], [1]]
+#                                           for each combination
+#                                                                  e.g. 1 2 0
+#                                                                       for each item
+#                                                                           
+#      IDEM pour rights et behind et front
+
+
+# construire tout les scénarios possibles, 
+#  où un scénario is like [1, 0, [2, 3]], i.e. represent vraiment une config = FACILE
+#
+#
+#                   puis à partir de chaque exemple du dataset, 
+
+#
+#                               1) construire la tour avec les xAboveY
+#                               2) construire le reste avec les lefts
+#
+#                                           i) si tour existe, prend un ele de la tour, et place les éléments qui sont à gauche
+#                                           ii) parmis les élé qui sont à gauche, place les + à gauche
+
+
 def load_blocks(track, num_examples, parameters=None, objects=True,**kwargs):
     #with np.load(os.path.join(latplan.__path__[0],"puzzles",track+".npz")) as data:
     # dataset that produces images: ['images', 'bboxes', 'picsize', 'transitions']
     # my own dataset : ,['images_mean', 'images_var', 'coords_mean', 'coords_var', 'picsize', 'patch_shape', 'num_samples_per_state', 'lol', 'transitions', 'all_infos']
     #with np.load("/workspace/latplanDatasetGen/cylinders-2-flat.npz", allow_pickle=True) as data:
-    
-    with np.load("/workspace/latplanDatasetGen/20000-flat.npz", allow_pickle=True) as data:
+    with np.load("/workspace/latplanDatasetGen/cylinders-3-flat.npz", allow_pickle=True) as data:
         # 
 
         #print(data.keys())
@@ -639,15 +583,24 @@ def load_blocks(track, num_examples, parameters=None, objects=True,**kwargs):
         print(keys)
         # print(data["transitions"])
 
+        #print(data["lol"])
+        # immmms = data['images'].astype(np.float32) / 255
+        # print(type(immmms)) # ORIGINAL IMAGE DATA nparray
+        # print(immmms.shape) # ORIGINAL IMAGE DATA  (80000, 1, 30, 45, 3)
 
-        images = data['images'].astype(np.float32) / 255
+        # # Don't forget to close the file after you're done
+        # print(data["all_descs"])
+        # data.close()
+        # #
 
+        images               = data['images'].astype(np.float32) / 255
+        print("okk")
         print(images.shape) # (4, 1, 100, 150, 3) PAS BON
 
         all_relations = data["all_relations"]
 
         #print(data["all_descs"])
-        all_descs = data["all_descs"]
+        all_descs=data["all_descs"]
         print("clears:")
         print(data["all_descs"][0]["clears"])
         print()
@@ -668,28 +621,38 @@ def load_blocks(track, num_examples, parameters=None, objects=True,**kwargs):
         print()
         print("right:")
         print(data["all_relations"][0]["right"])
+        # [[], [0, 2], [0]] means on the right of 1 there is 0 and 2
+        #                       on the right of 2 there is 0    
 
+        # clears = data["all_descs"]["clears"]
+        # xabovey = data["all_descs"]["xAboveY"]
 
         # bboxes               = data['bboxes']
         all_transitions_idx  = data['transitions']
-        print(len(all_transitions_idx))
-      
         # picsize              = data['picsize']
         # num_states, num_objs = bboxes.shape[0:2]
         # print("loaded. picsize:",picsize)
 
+    # print("tyyypes")
+    # print(type(relationships))
+    # print(type(clears))
+    # print(type(xabovey))
+
+
     #parameters["picsize"] = [picsize.tolist()]
     #parameters["generator"] = None
 
-    print(all_transitions_idx[:3]) # [0 1 2]
-
     all_transitions_idx = all_transitions_idx.reshape((len(all_transitions_idx)//2, 2))
 
-    
-    #np.random.shuffle(all_transitions_idx)
+    # all_transitions_idx[i] return the two indices of the images of the pair i
+    print("all_transitions_idx")
+    print(all_transitions_idx[:5])
+
+    np.random.shuffle(all_transitions_idx)
     transitions_idx = all_transitions_idx[:num_examples]
 
-    # transitions_idx[i] is like [5,6]
+    print(transitions_idx)
+
     print(transitions_idx[0][0])
     print(transitions_idx[0][1])
 
@@ -707,164 +670,20 @@ def load_blocks(track, num_examples, parameters=None, objects=True,**kwargs):
     # print(all_transitions_idx[:, 0])
     # print(all_descs[:5])
     print("hello")
-   
-    print("all_relations")
+    print(all_descs[all_transitions_idx[:, 0]])
 
+    # 
+    #print(all_pre_clears[:5])
+
+    print("all_relations")
+    print(all_relations)
     left_elements = [d['left'] for d in all_relations]
     
     xAboveY_elements = [d['xAboveY'] for d in all_descs]
 
-    # print(left_elements[16195])
-    # print(xAboveY_elements[16195])
-    # # [[1, 2], [], [1]]
-    # # [[0, 2]]
+    print(xAboveY_elements)
 
-    # print(images.shape) # (54324, 1, 30, 45, 3)
-
-    # plot_image(np.squeeze(images[16195]),"AAAAAAAA")
-
-
-    # (1, [0, 2])     [1, 2, 0]
-    #fromTowerAndLeftsBuildState(tower, lefts)
-    
-    # below, does exactly what's supposed to do, i.e. return for a given xAboveY array, the corres tower
-    alltowerss = return_all_towers_and_xAboveY()
-    
-
-    all_the_towers = []
-
-
-    for ij, xAboveYs in enumerate(xAboveY_elements): # for each transition, we take the xAboveYs value
-
-        # print("xAboveYs")
-        # print(xAboveYs)
-
-        did_find_tower=False
-
-
-        if xAboveYs: # if the xAboveYs value is not an empty list (i.e. there is at least a block on top of another)
-
-            for k, v in alltowerss.items(): # we loop over all the configurations of tower (e.g. { (1,0,2) : [1,0,2]}   )
-                xAboveYs_is_v = True # we assume that the xAboveYs IS a tower (then we filter out)
-                
-                for el in xAboveYs: # for each element in xAboveYs (like [0, 1])
-                    if el not in v: # if the el is not among elements in "v" , i.e. in the elements of the current configuration
-                        
-                        xAboveYs_is_v = False # THEN xAboveYs_is_v is False
-                        break
-                        #all_the_towers.append([])
-                if xAboveYs_is_v: # here, it means, that all the elements in xAboveYs ARE ALSO in v
-                    ss = k.strip("()") # From the key we construct the tower
-                    numbersss = ss.split(", ")
-                    resultsss = [int(num) for num in numbersss]
-                    all_the_towers.append(resultsss)
-                    did_find_tower=True
-                    break
-
-        if not did_find_tower or not xAboveYs:
-            all_the_towers.append([])
-       
-
-    # 16195    ça fait une tour like [0, 2] MAIS left est [[1, 2], [], [1]] donc problem
-    # 
-    #towers = []
-
-    # NOW... ALL THE STATES
-    all_the_states = []
-    print(len(all_the_towers)) # 54324
-
-    # an array to store states that are not "logic"
-    bad_indexes = []
-
-    for iii in range(len(all_the_towers)):
-        #print("iii : {}".format(str(iii)))
-        thestate = fromTowerAndLeftsBuildState(all_the_towers[iii], left_elements[iii], iii)
-        # if iii == 10000:
-        #     exit()
-        if thestate:
-            all_the_states.append(thestate)
-        else:
-            all_the_states.append("BAD STATE")
-            if iii%2 == 0:
-                #bad_indexes.append([iii, iii+1])
-                bad_indexes.append(iii)
-                bad_indexes.append(iii+1)
-            else:
-                bad_indexes.append(iii)
-                bad_indexes.append(iii-1)
-
-    print(images.shape) # (54324, 1, 30, 45, 3)
-    plot_image(np.squeeze(images[112]), "ABON112")
-    print("all_the_states[112]")
-    print(all_the_states[112])
-    print()
-    plot_image(np.squeeze(images[113]), "ABON113")
-    print("all_the_states[113]")
-    print(all_the_states[113])
-    
-    # !!!!!!!!!!!! all_the_states IS GOOD !!!!!!!!!!!!
-
-
-    # si impair ALORS mettre son index MAIS aussi le -1
-    # si pair 
-    print("bad_indexes")
-    print(len(bad_indexes))
-    print("images ")
-
-    # 
-
-    images = rgb_to_grayscale(images)
-
-    #plot_image(np.squeeze(images[16195]),"AAAAAAAA")
-
-    images_cleaned = []
-    for hhhhhh, im in enumerate(images):
-        if hhhhhh not in bad_indexes:
-            images_cleaned.append(im)
-
-    all_the_states_cleaned = []
-    for iu, sss in enumerate(all_the_states):
-        if iu not in bad_indexes:
-            all_the_states_cleaned.append(sss)
-    
-
-    all_unique_actions = []
-
-    all_actions_indices = []
-
-    print("commence")
-    print(all_combis)
-    print()
-    all_actions = []
-    for jjj in range(0, len(all_the_states_cleaned), 2):
-        to_add = [all_the_states_cleaned[jjj], all_the_states_cleaned[jjj+1]]
-        if to_add in all_combis:
-            all_actions.append(to_add)
-            all_actions_indices.append(all_combis.index(to_add))
-        else:
-            print("PROOOOBLEME")
-        if to_add not in all_unique_actions:
-            all_unique_actions.append(to_add)
-
-    print("len all_unique_actions")
-    print(len(all_unique_actions))
-    print(all_actions_indices[:2])
-    #exit()
-    print()
-    print(all_actions[2]) # [[2, [1, 0]], [[2, 1, 0]]]
-
-    # 0 => 0 1
-    # 1 => 2 3
-    # 2 => 4 5
-    plot_image(np.squeeze(images_cleaned[4]), "A4")
-    plot_image(np.squeeze(images_cleaned[5]), "A5")
-    
-
-    images_squeezed = np.squeeze(images_cleaned)
-
-    print(transitions_idx[:,0])
-    print()
-    print(transitions_idx[:,1])
+    exit()
 
     if objects:
         all_states = np.concatenate((images.reshape((num_states, num_objs, -1)),
@@ -874,46 +693,16 @@ def load_blocks(track, num_examples, parameters=None, objects=True,**kwargs):
         sucs = all_states[transitions_idx[:,1]]
         transitions, states = normalize_transitions_objects(pres,sucs,**kwargs)
     else:
-        pres = images_squeezed[transitions_idx[:,0]]
-        sucs = images_squeezed[transitions_idx[:,1]]
-        transitions, states, mean, std = normalize_transitions_here(pres, sucs)
+        pres = images[transitions_idx[:,0],0]
+        sucs = images[transitions_idx[:,1],0]
+        transitions, states = normalize_transitions(pres,sucs)
 
     print("statess ????")
-    #print(states[0])
+    print(states[0])
     print("---------")
-    # ACTION ???  
-    print(transitions.shape) # (50, 2, 30, 45, 3)
+    exit()
 
-    print(transitions[0][0])
-    #exit()
-    plot_image(transitions[22][0], "A22_PRE")
-    plot_image(transitions[22][1], "A22_SUC")
-    print("THE ACTION !!") # [[2, [1, 0]], [[2, 1, 0]]]
-
-    # print(all_actions[22])
-    # Combien d'actions ???
-    # 132
-
-    all_actions_onehot = F.one_hot(torch.tensor(all_actions_indices), num_classes=132)
-
-    all_actions_onehot_numpy = []
-    for a in all_actions_onehot:
-        all_actions_onehot_numpy.append(a.numpy())
-
-    all_actions_onehot_numpy = np.array(all_actions_onehot_numpy)
-    #exit()7
-    print("all_actions_onehot_numpy.shape")
-    print(all_actions_onehot_numpy.shape)
-
-    for hh in range(0, 1500, 500):
-        print("for h = {}".format(str(hh)))
-        #print(np.where(actions_one_hot.numpy()[hh] == 1)[0])
-        print(all_combis[np.where(all_actions_onehot_numpy[hh] == 1)[0][0]])
-    
-
-    # Now transform the actions into a one hot encoding 
-
-    return transitions[:num_examples], states[:num_examples], all_actions_onehot_numpy[:num_examples], mean, std
+    return transitions, states
 
 
 ################################################################
@@ -921,9 +710,9 @@ def load_blocks(track, num_examples, parameters=None, objects=True,**kwargs):
 
 def return_blocks(args, parameters):
     parameters["generator"] = "latplan.puzzles.blocks"
-    transitions, states, actions, mean, std = load_blocks(**vars(args), parameters=parameters, objects=False)
+    transitions, states = load_blocks(**vars(args), parameters=parameters, objects=False)
 
-    return transitions, states, actions, mean, std
+    return transitions
     #ae = run(os.path.join("samples",common.sae_path), transitions)
 
 

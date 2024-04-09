@@ -127,7 +127,7 @@ class MNISTDataModule(pl.LightningDataModule):
         return (x - mean)/(std+1e-20)
 
 
-    def normalize_transitions(self, pres,sucs):
+    def normalize_transitions(self, pres, sucs):
         """Normalize a dataset for image-based input format.
     Normalization is performed across batches."""
         B, *F = pres.shape

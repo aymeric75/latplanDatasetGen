@@ -5,8 +5,11 @@ import numpy as np
 import os
 import imageio
 from PIL import Image
-
-
+import random
+import pickle
+import operator
+random.seed(1)
+np.random.seed(1)
 
 def generate(ics, gcs, render_fn):
     inits = render_fn(ics)
@@ -27,6 +30,14 @@ def generate(ics, gcs, render_fn):
 
         imageio.imsave(os.path.join(d,"initTTT.png"),init)
         imageio.imsave(os.path.join(d,"goalLLL.png"),goal)
+
+
+
+def load_dataset(path_to_file):
+    # Load data.
+    with open(path_to_file, mode="rb") as f:
+        loaded_data = pickle.load(f)
+    return loaded_data
 
 
 def plot_image(a,name):
@@ -97,6 +108,7 @@ def enhance(image):
     return np.clip((image-0.5)*3,-0.5,0.5)+0.5
 
 def preprocess(image):
+    print("testttt1")
     image = image.astype(float)
     image = equalize(image)
     image = normalize(image)
@@ -175,229 +187,191 @@ def int_to_binary(n, max_bits):
     """Convert an integer to its binary representation with a fixed number of bits."""
     if n >= 2**max_bits:
         raise ValueError(f"Number {n} can't be represented with {max_bits} bits.")
-    
-
 
     bin_str = bin(n)[2:]  # Convert the integer to binary and remove the '0b' prefix
 
     return [int(bit) for bit in bin_str.zfill(max_bits)]
 
-# # Test
-# n = 3
-# max_bits = 5
-# print(int_to_binary(n, max_bits))  # Expected output: [0, 0, 0, 1, 1]
 
+from itertools import permutations 
+def all_orderings():
+    # Adjusting the list to [1, 2, 3, 4, 5, 6, 7, 8] and creating all possible orderings
+    adjusted_list = [0, 1, 2, 3, 4, 5, 6, 7, 8]
+    all_orderings_adjusted = list(permutations(adjusted_list))
+    #print(all_orderings_adjusted)
+    #exit()
+    return all_orderings_adjusted
+
+def swapPositions(liste, pos1, pos2):
+
+    # print("liste: ")
+    # print(liste)
+
+    liste1 = liste.copy()
+
+    # print(liste1)
+    # print("liste1")
+    
+    liste1[pos1], liste1[pos2] = liste[pos2], liste[pos1]
+    #print(liste1)
+    
+    return liste1
+
+
+def return_all_next_states(config):
+    # config is list of size 9
+    # config[0] is the digit on the top left corner
+    # config[8] is the digit on the bottom right corner
+
+    all_next_states = []
+
+    # where is 0 ?
+    index_zero = config.index(0)
+
+    # if index_zero is 0
+    if index_zero == 0:
+        # switch with pos1 and pos3
+        list1 = swapPositions(config, index_zero, 1)
+        list2 = swapPositions(config, index_zero, 3)
+        all_next_states.append(list1)
+        all_next_states.append(list2)
+
+    # elif index_zero is 1
+    if index_zero == 1:
+        # switch with pos0 and pos2 and pos4
+        list1 = swapPositions(config, index_zero, 0)
+        list2 = swapPositions(config, index_zero, 2)
+        list3 = swapPositions(config, index_zero, 4)
+        all_next_states.append(list1)
+        all_next_states.append(list2)
+        all_next_states.append(list3)
+
+    # elif index_zero is 2
+    if index_zero == 2:
+        # switch with pos1 and pos5
+        list1 = swapPositions(config, index_zero, 1)
+        list2 = swapPositions(config, index_zero, 5)
+        all_next_states.append(list1)
+        all_next_states.append(list2)
+
+    # elif index_zero is 3
+    if index_zero == 3:
+        # switch with pos0 and pos4 and pos6
+        list1 = swapPositions(config, index_zero, 0)
+        list2 = swapPositions(config, index_zero, 4)
+        list3 = swapPositions(config, index_zero, 6)
+        all_next_states.append(list1)
+        all_next_states.append(list2)
+        all_next_states.append(list3)
+
+    # elif index_zero is 4
+    if index_zero == 4:
+        # switch with pos1, pos3, pos5, pos7
+        list1 = swapPositions(config, index_zero, 1)
+        list2 = swapPositions(config, index_zero, 3)
+        list3 = swapPositions(config, index_zero, 5)
+        list4 = swapPositions(config, index_zero, 7)
+        all_next_states.append(list1)
+        all_next_states.append(list2)
+        all_next_states.append(list3)
+        all_next_states.append(list4)
+
+    # elif index_zero is 5
+    if index_zero == 5:
+        # switch with pos2, pos4, pos8
+        list1 = swapPositions(config, index_zero, 2)
+        list2 = swapPositions(config, index_zero, 4)
+        list3 = swapPositions(config, index_zero, 8)
+        all_next_states.append(list1)
+        all_next_states.append(list2)
+        all_next_states.append(list3)
+
+    # elif index_zero is 6
+    if index_zero == 6:
+        # switch with pos3, pos7
+        list1 = swapPositions(config, index_zero, 3)
+        list2 = swapPositions(config, index_zero, 7)
+        all_next_states.append(list1)
+        all_next_states.append(list2)
 
+    # elif index_zero is 7
+    if index_zero == 7:
+        # switch with pos6, pos4, pos8
+        list1 = swapPositions(config, index_zero, 6)
+        list2 = swapPositions(config, index_zero, 4)
+        list3 = swapPositions(config, index_zero, 8)
+        all_next_states.append(list1)
+        all_next_states.append(list2)
+        all_next_states.append(list3)
 
+    # elif index_zero is 8
+    if index_zero == 8:
+        # switch with pos5, pos7
+        list1 = swapPositions(config, index_zero, 5)
+        list2 = swapPositions(config, index_zero, 7)
+        all_next_states.append(list1)
+        all_next_states.append(list2)
 
-all_combis = []
+    return all_next_states
 
-##  actions: push_up: 0, push_down: 1, push_left: 2, push_right: 3
-#
 
-### 0 at the corner ####
-# 0 at top left
-all_combis.append([0, 1])
-all_combis.append([0, 3])
 
 
-# top middle
-all_combis.append([1, 1])
-all_combis.append([1, 2])
-all_combis.append([1, 3])
 
+def return_trace_from_one_config(config, trace_length):
 
-# 0 at top right
-all_combis.append([2, 1])
-all_combis.append([2, 2])
+    final_length = 0
 
+    all_pairs = []
 
+    last_two_states = []
 
+    while final_length < trace_length:
 
-# left middle
-all_combis.append([3, 0])
-all_combis.append([3, 1])
-all_combis.append([3, 3])
+        next_states = return_all_next_states(config)
 
+        if last_two_states == 2:
+            while True:
+                next_state = random.choice(next_states)
 
+                if next_state != last_two_states[0]:
+                    break
+        else:
+            next_state = random.choice(next_states)
 
-### 0 at the middle
-all_combis.append([4, 0]) # 0 in middle
-all_combis.append([4, 1])
-all_combis.append([4, 2])
-all_combis.append([4, 3])
+        last_two_states.append([config, next_state])
+        if len(last_two_states) > 2:
+            last_two_states.pop(0)
 
+        all_pairs.append([config, next_state])
 
+        config = next_state
 
+        final_length += 1
 
-# right middle
-all_combis.append([5, 0])
-all_combis.append([5, 1])
-all_combis.append([5, 2])
+    return all_pairs
 
+def return_all_transitions_configs():
+    all_states = all_orderings()
 
-# 0 at bottom left
-all_combis.append([6, 0])
-all_combis.append([6, 3])
+    # print(all_states)
+    # exit()
+    all_transitions = []
 
+    for s in all_states:
+        next_states = return_all_next_states(list(s))
+        for n in next_states:
+            all_transitions.append([list(s), n])
 
-
-# bottom middle 
-all_combis.append([7, 0])
-all_combis.append([7, 2])
-all_combis.append([7, 3])
-
-
-
-
-
-# 0 at bottom right
-all_combis.append([8, 0])
-all_combis.append([8, 2])
-
-
-all_combis_augmented = [] # = the other 8 digit susceptible to be switched, for each action
-
-for combi in all_combis:
-    for i in range(1, 9):
-        lol = np.copy(combi)
-        lol = np.append(lol, i)
-        all_combis_augmented.append(lol)
-
-
-print("all_combis_augmented")
-print(all_combis_augmented)
-print("all_combis_augmentedlol")
-
-print(all_combis_augmented[41])
-
-print(len(all_combis_augmented)) # 192
-
-##  actions: push_up: 0, push_down: 1, push_left: 2, push_right: 3
-
-
-
-# 1) tu combine les 2 vect, donc now (5000, 2) where at index i 0 we habe the pos0 and at i 1 the action_move
-
-# 2) turn this combined vector into a (5000, 24) vector where at index i we have a one-hot repre of pos0 and action_move
-
-# 3) for the one-hot repr we do a one hot repr of the index of value [pos0, actionmove] from all_combis
-
-# from a position of 0 (NO, actually, from a config)
-# returns a list of two elements:
-# the next pos of 0 and the label's action performed (from 0 to 3)
-# the action and the next position are legal
-def perform_random_action(config):
-
-    pos0 = config.index(0)
-
-    all_combis = []
-
-    ##  actions: push_up: 0, push_down: 1, push_left: 2, push_right: 3
-    #
-
-    ### 0 at the corner ####
-    # 0 at top left
-    all_combis.append([0, 1])
-    all_combis.append([0, 3])
-
-    # top middle
-    all_combis.append([1, 1])
-    all_combis.append([1, 2])
-    all_combis.append([1, 3])
-
-    # 0 at top right
-    all_combis.append([2, 1])
-    all_combis.append([2, 2])
-
-    # left middle
-    all_combis.append([3, 0])
-    all_combis.append([3, 1])
-    all_combis.append([3, 3])
-
-    ### 0 at the middle
-    all_combis.append([4, 0]) # 0 in middle
-    all_combis.append([4, 1])
-    all_combis.append([4, 2])
-    all_combis.append([4, 3])
-
-    # right middle
-    all_combis.append([5, 0])
-    all_combis.append([5, 1])
-    all_combis.append([5, 2])
-
-    # 0 at bottom left
-    all_combis.append([6, 0])
-    all_combis.append([6, 3])
-
-    # bottom middle 
-    all_combis.append([7, 0])
-    all_combis.append([7, 2])
-    all_combis.append([7, 3])
-
-    # 0 at bottom right
-    all_combis.append([8, 0])
-    all_combis.append([8, 2])
-
-    all_combis = np.array(all_combis)
-    indices = np.where(all_combis[:, 0] == pos0)
-
-    result = all_combis[indices]
-
-    #print(result)
-
-    action_and_next = []
-
-    # actions: push_up: 0, push_down: 1, push_left: 2, push_right: 3
-    for app in result:
-
-        if app[1] == 0:
-            next_pos = app[0] - 3
-
-        if app[1] == 1:
-            next_pos = app[0] + 3
-
-        if app[1] == 2:
-            next_pos = app[0] - 1
-
-        if app[1] == 3:
-            next_pos = app[0] + 1
-
-        if next_pos >= 0 and next_pos < 9:
-            # is valid
-            action_and_next.append([next_pos, app[1]])
-
-    import random
-
-    random_item = random.choice(action_and_next)
-
-    nextPos0 = random_item[0]
-
-    new_config = np.copy(np.array(config))
-
-    new_config[pos0], new_config[nextPos0] = config[nextPos0], config[pos0]
-
-    return new_config, random_item[1]
-
-    # from pos0 , prend toutes les actions "applicables" (où pos0 est à gauche)
-
-    # if action==1 (push_down), add 3 to the pos, (if still between 0-9 ok)...
-    #    keep this action (in memoty)
-
-    # among all still valid actions (and where they lead to ) choose one randomly
-
-    # return the action label et the next pos0
-
-
+    return all_transitions
 
 # fonction qui retourne les actions à partir de config
-def from_pairs_of_confis_to_onehotaction_repr(pres_configs, sucs_configs, augmented=False, custom=False):
+def from_pairs_of_confis_to_onehotaction_repr(pres_configs, sucs_configs, augmented=False, custom=False, shuffle_dataset=None):
 
 
     ##################################################################
     # determining the Symbolic repr of the actions (l/r/t/d and pos0)
     ##################################################################
-    print("pres_configspres_configspres_configspres_configspres_configspres_configspres_configspres_configspres_configspres_configs")
     
     tensor_pres_configs = torch.tensor(pres_configs)
     
@@ -408,10 +382,6 @@ def from_pairs_of_confis_to_onehotaction_repr(pres_configs, sucs_configs, augmen
         permuted_tensor = one_hot_repr.permute(0, 1, 2) # TO USE FOR CUSTOM DATASET 
     right_pres_configs = permuted_tensor.argmax(dim=2) # see just below
 
-    print("right_pres_configs")
-    print(right_pres_configs[0])
-    print(right_pres_configs.size())
-    
 
     # right_pres_configs[0] = tensor([4, 6, 7, 3, 5, 1, 2, 0, 8])
     #      = configuration of example 0 (of the pres), in the good order (from top left to bottom right)
@@ -426,27 +396,11 @@ def from_pairs_of_confis_to_onehotaction_repr(pres_configs, sucs_configs, augmen
         permuted_tensor = one_hot_repr.permute(0, 1, 2) # TO USE FOR CUSTOM DATASET
     right_sucs_configs = permuted_tensor.argmax(dim=2)
 
-    print("right_sucs_configs")
-    print(right_sucs_configs[0])
 
     # for each pair, determine the pos of the 0
     zero_positions_pres = torch.tensor([torch.where(vec == 0)[0].item() for vec in right_pres_configs])
     zero_positions_sucs = torch.tensor([torch.where(vec == 0)[0].item() for vec in right_sucs_configs])
 
-    print("zero_positions_pres")
-    print(zero_positions_pres[600])
-
-    print()
-
-    print("zero_positions_sucs")
-    print(zero_positions_sucs[600])
-
-    print()
-
-
-    # zero_positions_pres[0] = tensor(7)  (see right_pres_configs[0] above)
-
-    # now, for each pair, determine the action's label (l/r/t/p)
 
     ## over all pairs, determine the possible position of 0 in the next state
     pres_minus_three = zero_positions_pres - 3 # returns the position of the zero IF top move
@@ -458,37 +412,11 @@ def from_pairs_of_confis_to_onehotaction_repr(pres_configs, sucs_configs, augmen
     # just a zeros' vector of size (5000, 1)
     all_actions = torch.zeros_like(zero_positions_pres, dtype=torch.int)
 
-    print("pres_minus_three")
-    print(pres_minus_three[600]) # tensor([-3, -3, -3])
-
-    print("pres_plus_one")
-    print(pres_plus_one[600]) # tensor([1, 1, 1])
-
-    print("pres_minus_one")
-    print(pres_minus_one[600])
-
 
     top_moves = pres_minus_three == zero_positions_sucs # at each index of the dataset says if TOP MOVE true (or false)
     down_moves = pres_plus_three == zero_positions_sucs # ETC
     right_moves = pres_plus_one == zero_positions_sucs
     left_moves = pres_minus_one == zero_positions_sucs
-
-    print("top_moves[600]")
-    print(top_moves[600])
-
-    print("right_moves[600]")
-    print(right_moves[600])
-
-
-    print("left_moves[600]")
-    print(left_moves[600])
-
-
-    print("down_moves[600]")
-    print(down_moves[600])
-
-    print("ggggg")
-    print(all_actions[600])
 
     # actions: 0: top, 1: down, 2: left, 3: right
     # on a 0s vector (all_actions) applies 0, 1, 2 or 3 according to the thruth masks above
@@ -497,46 +425,14 @@ def from_pairs_of_confis_to_onehotaction_repr(pres_configs, sucs_configs, augmen
     all_actions[left_moves] = 2
     all_actions[right_moves] = 3
 
-    print("theallactions0000000000")
-    print(all_actions[600])
-
-    # all_actions is now a (5000, 1) vector WHERE each value at index i is the move (0 1 2 3 for t/d/l/r) that was performed
-    # for transition i, e.g. 2 at position 42 means that a left move was performed on transitions number 42 (starting from 0)
-
-    # if the action is 0 (top), look at the digit at position pos0-3
-    # if "  "   "  "   1  (down), "  "   "  "   "  "   "  "   pos0+3
-    # if "  "   "  "   2  (left), "   "  "   "  "   "  "   "  pos0-1
-    # if "  "   "  "   3  (right), "   "  "   "  "   "  "   " pos0+1
-    #    for above, look into right_sucs_configs
-
-    print("zero_positions_pres")
-    print(zero_positions_pres[0])
-    print("iiiii")
-    print(right_sucs_configs[0])
     # tensor([8, 5, 6, 3, 0, 4, 1, 2, 7])
     x = zero_positions_pres[:, None]
     neighbours = torch.gather(right_sucs_configs, 1, x).squeeze()
-
-    print(neighbours[0])
-    print("neighsssss")
-
-    #neighbours = right_sucs_configs.gather(1, zero_positions_pres.unsqueeze(1)) # shape (5000, 1)
-
-    print("kkk")
-    print(all_actions.shape) # 2800
-    print(zero_positions_pres.shape)
-    print("theallactions")
-    print(all_actions[:3]) # [3, 3, 0] DEVRAIT ETRE [3, 3, 1]
 
 
     
     # now we augment the all_actions with the position of the 0
     pos_and_move = torch.stack((zero_positions_pres, all_actions), dim=1)
-
-
-    print("pos_and_move size 1")
-    print(pos_and_move.size())
-    print(pos_and_move[600])
 
 
     if augmented:
@@ -547,24 +443,10 @@ def from_pairs_of_confis_to_onehotaction_repr(pres_configs, sucs_configs, augmen
         # donc neighbours n'est pas bon
 
 
-    print("pos_and_move size 2")
-    print(pos_and_move.size())
-
-    # # TEST to see if number of a combinations is equal to the number of
-    # # the <=> one hot label (see below)
-    # print("hhhh")
-    # target_tensor = torch.tensor([1, 1, 1])
-    # occurrences = torch.sum(torch.all(pos_and_move == target_tensor, dim=1)).item()
-    # print(occurrences) # 179
-
-
     # hold, for each transition pair, the index of the action from the
     # actions' label vector, i.e. from all_combis or all_combis_augmented
     indices = []
 
-    print("ooo")
-    print(len(all_combis_augmented)) # 192
-    print(len(all_combis)) # 24
 
     # in pos_and_move at each line, there is a desc of an action (e.g. [3, 0, 5])
     for ccc, row in enumerate(pos_and_move):
@@ -598,13 +480,9 @@ def from_pairs_of_confis_to_onehotaction_repr(pres_configs, sucs_configs, augmen
     #print(actions_one_hot.shape) # torch.Size([5000, 24]) or torch.Size([5000, 192])
     summed = torch.sum(actions_one_hot, dim=0)
 
-    print("actions_one_hot")
-    print(actions_one_hot) # tensor([[0, 0, 0,  ..., 0, 0, 0],
-    print(actions_one_hot.size())
+    #actions_one_hot = torch.ones(40320, 1)
 
-    actions_one_hot = torch.ones(40320, 1)
-
-    for hh in range(10, 20):
+    for hh in range(0, 1000, 500):
         print("for h = {}".format(str(hh)))
         #print(np.where(actions_one_hot.numpy()[hh] == 1)[0])
         print(all_combis[np.where(actions_one_hot.numpy()[hh] == 1)[0][0]])
@@ -683,220 +561,504 @@ def return_images_from_configs(pres_configs, sucs_configs):
 # plot_image(images[2][1], "2SUCS.png")
 
 
-from itertools import permutations 
-def all_orderings(adjusted_list):
-    # Adjusting the list to [1, 2, 3, 4, 5, 6, 7, 8] and creating all possible orderings
-    adjusted_list = [1, 2, 3, 4, 5, 6, 7, 8]
-    all_orderings_adjusted = list(permutations(adjusted_list))
-    return all_orderings_adjusted
-
-def load_puzzle(type, width, height, num_examples, objects, parameters, one_hot=False, augmented=False, custom=False):
+def load_puzzle(type, width, height, num_examples, objects, parameters, one_hot=False, augmented=False, custom=False, masked='both', shuffle_dataset=None):
     
     import importlib
     generator = 'latplan.puzzles.puzzle_{}'.format(type)
+    print(generator)
     #generator = '/workspace/latplanClonedEnforce/latplan.puzzles.puzzle_{}'.format(type)
     parameters["generator"] = generator
+    print(generator)
 
-    #
-    
-    p = importlib.import_module(generator)
-    print("ppppppppppppp")
-    print(p) # <module 'latplan.puzzles.puzzle_mnist' from '/workspace/latplanClonedEnforce/latplan/puzzles/puzzle_mnist.py'>
     # 
+
+    #sys.path.append(r"..latplanClonedLossTerm/latplan")
+    sys.path.insert(0, '/workspace/latplanClonedEnforce')
+    p = importlib.import_module(generator)
+    sys.path.remove('/workspace/latplanClonedEnforce')
+
+    print(p)
+
+
     # 
     # <module 'latplan.puzzles.puzzle_mnist' from '/workspace/latplanRealOneHotActionsV2/latplan/puzzles/puzzle_mnist.py'>
     p.setup()
     path = os.path.join(latplan.__path__[0],"puzzles","-".join(map(str,["puzzle",type,width,height]))+".npz")
     
 
+    # pairs = return_trace_from_one_config([0,1,2,3,4,5,6,7,8], 5000)
 
-    # ics = [(7, 2, 5, 0, 3, 1, 6, 4, 8), (7, 3, 2, 1, 0, 5, 6, 4, 8), (5, 3, 2, 1, 0, 4, 6, 7, 8), (3, 0, 2, 4, 1, 8, 6, 5, 7), (3, 1, 2, 0, 4, 7, 6, 8, 5), (3, 1, 5, 0, 2, 4, 6, 7, 8), (5, 0, 2, 7, 1, 4, 3, 6, 8), (1, 0, 5, 3, 2, 8, 6, 4, 7), (1, 2, 5, 0, 3, 8, 6, 4, 7), (1, 2, 5, 0, 4, 8, 3, 6, 7), (5, 4, 1, 0, 7, 2, 3, 6, 8), (7, 0, 2, 3, 1, 8, 6, 5, 4), (3, 1, 4, 0, 5, 2, 6, 7, 8), (3, 1, 2, 0, 6, 4, 7, 8, 5), (3, 5, 1, 0, 4, 2, 6, 7, 8), (1, 4, 2, 0, 5, 8, 3, 6, 7), (1, 4, 2, 0, 6, 5, 7, 3, 8), (1, 5, 4, 0, 3, 2, 6, 7, 8), (7, 1, 2, 0, 3, 8, 6, 5, 4), (5, 0, 1, 3, 7, 2, 6, 8, 4)]
+    # data = {
+    #     "pairs" : pairs,
+    # }
+    
+    # if not os.path.exists("mnist_dataset"):
+    #     os.makedirs("mnist_dataset") 
+    # filename = "data.p"
+    # with open("mnist_dataset"+"/"+filename, mode="wb") as f:
+    #     pickle.dump(data, f)
 
-    # gcs are the goals    
+    
+    loaded_dataset = load_dataset("/workspace/latplanDatasetGen/mnist_dataset/data.p")
 
-    # ics = [ (7, 2, 5, 4, 3, 1, 6, 0, 8) ]
+    pairs = loaded_dataset["pairs"]
 
-    # gcs = [ (7, 2, 5, 4, 0, 1, 6, 3, 8) ]
+    #pairs = pairs[:len(pairs)//8]
 
-    # generate(ics, gcs, lambda configs: p.generate(np.array(configs),width,height, custom=False))
+    ### dico of occurence of unique pairs
+    dico_occurences = {}
+    print(type(pairs[0][0]))
+    #print(type(pairs[0]))
+    exit()
+
+    total_dico = {}
+
+    unique_pairs = []
+
+    unique_states = [] # = the "states" array
+    initial_state = str(pairs[0][0])
+    final_state = str(pairs[-1][1])
+    alphabet_dic = {}
+
+    for occi, pair in enumerate(pairs):
+        if pair not in unique_pairs:
+            dico_occurences[str(pair)] = 1
+            unique_pairs.append(pair)
+            alphabet_dic[str(pair)] = "a"+str(occi)
+            #alphabet.append()
+        else:
+            dico_occurences[str(pair)] += 1
+        if pair[0] not in unique_states:
+            unique_states.append(str(pair[0]))
+
+        if pair[1] not in unique_states:
+            unique_states.append(str(pair[1]))
+
+    print("unjique pauirs")
+    print(len(unique_pairs)) # 3325
+    print(dico_occurences)
+
+    all_transitions = []
+
+    # re loop over the pair and associate each pair to its action
+    for occi, pair in enumerate(pairs):
+        transi = []
+        transi.append(str(pair[0]))
+        transi.append(alphabet_dic[str(pair)])
+        transi.append(str(pair[1]))
+        all_transitions.append(transi)
+        
+    total_dico["alphabet"] = list(alphabet_dic.values())
+    total_dico["states"] = unique_states
+    total_dico["initial_state"] = initial_state
+    total_dico["accepting_states"] = final_state
+    total_dico["transitions"] = all_transitions
+
+    with open("exampleBIS.json", 'w') as f:
+        json.dump(total_dico, f)
+
+
+    exit()
+    # build  the alphabet
+
+    # sorted(dico_occurences, key=dico_occurences.get, reverse=True)
+    # print("la")
+    #print(dico_occurences)
+    sorted_dict = dict(sorted(dico_occurences.items(), key=operator.itemgetter(1), reverse=False))
+    print(sorted_dict)
+    # [[0, 7, 5, 3, 1, 2, 8, 4, 6], [3, 7, 5, 0, 1, 2, 8, 4, 6]]
+
+    # 
+
+
+    exit()
+
+    # i) list all unique states
+
+    # print(len(unique_states))
+
+    # # ii) for each unique state, print out how many edges join it
+    # dico_unique_states_edges = {}
+    # for st in unique_states:
+    #     dico_unique_states_edges[str(st)] = 0
+    #     for pair in pairs:
+    #         if pair[1] == st:
+    #             dico_unique_states_edges[str(st)] += 1
+
+    #sorted(dico_unique_states_edges, key=dico_unique_states_edges.get, reverse=True)
+    # print("la")
+    # #print(dico_unique_states_edges)
+    # sorted_dict = dict(sorted(dico_unique_states_edges.items(), key=operator.itemgetter(1), reverse=True))
+    # print(sorted_dict)
+    # exit()
+
+    unique_pairs_copy = unique_pairs.copy()
+
+    print("len unique_pairs_copy")
+    print(len(unique_pairs_copy))
+
+
+    list_of_necessary_states = [
+        [1,2,3,4,5,6,7,0,8],
+
+        [1,2,3,4,0,6,7,5,8],
+
+        [1,2,3,4,6,0,7,5,8],
+
+        [1,2,3,4,6,8,7,5,0],
+
+        [1,2,3,4,6,8,7,0,5],
+
+        [1,2,3,4,0,8,7,6,5],
+
+        [1,2,3,4,8,0,7,6,5],
+
+        [1,2,3,4,8,5,7,6,0],
+
+        [1,2,3,4,8,5,7,0,6],
+
+        [1,2,3,4,0,5,7,8,6],
+
+        [1,2,3,4,5,0,7,8,6],
+
+        [1,2,3,4,5,6,7,8,0]
+    ]
+
+
+
+    immma = p.states(width, height, [[1,2,3,4,5,6,7,0,8]], custom=True)[0][:,:,:,None]
+    print("immma[0] data")
+    print(immma[0].shape)
+    print(np.unique(immma[0]))
+
+    plt.imsave("idd.png",np.squeeze(immma[0]))
+
+    image = imageio.imread("idd.png")
+    print("loool")
+    print(image.shape)
+
+    print(np.unique(image[:,:,0]))
+
+    # plt.figure(figsize=(1, 1), dpi=48)
+    # plt.imshow(immma[0], interpolation='nearest', cmap='gray')
+    # plt.axis('off')
+    # plt.savefig('imageeeEEEee.png', bbox_inches='tight', pad_inches=0)
+    # plt.close()
+
+
+
+    # #plt.imsave("imageeeee.png",np.squeeze(immma[0]))
+    # plt.figure(figsize=(6,6))
+    # plt.axis('off')
+    # plt.imshow(np.squeeze(immma[0]),interpolation='nearest',cmap='gray',)
+    # plt.savefig("imageeeee.png", bbox_inches='tight', pad_inches = 0)
+
+
+    exit()
+    image = image[:,:,:3]
+    print(image.shape)
+    image = np.where(image[:,:,0] > 128, 1, 0)
+    #image = np.where(image[:,:,0] > 0, 1, 0)
+    print(image.shape)
+    print(np.unique(image))
+    plt.imsave("imageeRECON.PNG",np.squeeze(image))
+
+
+    
+    #immma = p.states(width, height, list_of_necessary_states, custom=True)[0][:,:,:,None]
+    #exit()
+
+    for thein, immmm in enumerate(immma):
+            
+
+        plt.imsave("immmm"+str(thein)+".PNG",np.squeeze(immmm))
+
+
+
+    data = {
+        "conseq_1" : immma[0],
+        "conseq_2": immma[1],
+    }
+    
+    if not os.path.exists("images_arrays_problem"):
+        os.makedirs("images_arrays_problem") 
+    filename = "conseqs.p"
+    with open("images_arrays_problem"+"/"+filename, mode="wb") as f:
+        pickle.dump(data, f)
+
+
+
+
+
+    list_of_necessary_transitions = []
+
+    for iijj in range(0, len(list_of_necessary_states)-1, 1):
+        list_of_necessary_transitions.append([list_of_necessary_states[iijj], list_of_necessary_states[iijj+1]])
+
+
+    for pair in list_of_necessary_transitions:
+        if pair not in unique_pairs_copy:
+            unique_pairs_copy.append(pair)
+
+    print("unique_pairs_copy bis")
+    print(len(unique_pairs_copy))
+
+
+    edge_to_remove = [
+        [1, 2, 3, 4, 5, 6, 7, 0, 8], [1, 2, 3, 4, 5, 6, 7, 8, 0]
+    ]
+
+    # for iimm, imgggg in enumerate(immma):
+    #     plt.imsave("Pouz"+str(iimm)+".PNG",np.squeeze(imgggg))
 
     # exit()
 
-    # 0 at any pos
+    # then, make the list of transitions from it
 
-    #   then exchange with pos0 + 3 , -3 , +1, -1
-
-    # for each pos of 0
-    pres_configs_custom = []
-    sucs_configs_custom = []
     
 
-    # pos+ac entre 0 et 9
-    # MAIS aussi, si pos=2, alors pos+ac peut pas être 3
 
-    # +3 uniqument pour de [0,1,2,3,4,5]
-    # -3 uniqument pour de [3,4,5,6,7,8]
-    # +1 uniqument pour de [0, 1, 3, 4, 6, 7]
-    # -1 uniqument pour de [1, 2, 4, 5, 7, 8]
-
-    for pos in range(9):
-
-        # here we only produce pre-states with 0 at center bottom
-        if pos == 7:
-
-            # for each action (+3, -3 etc)
-            #for ac in [3, -3, 1, -1]:
-            for ac in [-3]: # only up
-
-                if (ac == 3 and pos in [0,1,2,3,4,5]) or (ac == -3 and pos in [3,4,5,6,7,8]) or (ac == 1 and pos in [0, 1, 3, 4, 6, 7]) or (ac == -1 and pos in [1, 2, 4, 5, 7, 8]):
-
-                    # sample X combinations <=> pos0 + move
-
-                    for ordering in all_orderings([1, 2, 3, 4, 5, 6, 7, 8]):                        
-
-                        tmp_pre = np.insert(ordering, pos, 0)
-                        tmp_suc = tmp_pre.copy()
-                        tmp_suc[pos], tmp_suc[pos+ac] = tmp_pre[pos+ac], tmp_pre[pos]
-                        pres_configs_custom.append(tmp_pre)
-                        sucs_configs_custom.append(tmp_suc)
-
-                    
-                    # for s in range(5000):
-
-                    #     prim = np.arange(1, 9)
-                    #     np.random.shuffle(prim)
-                    #     tmp_pre = np.insert(prim, pos, 0)
-                    #     tmp_suc = tmp_pre.copy()
-                    #     tmp_suc[pos], tmp_suc[pos+ac] = tmp_pre[pos+ac], tmp_pre[pos]
-                    #     pres_configs_custom.append(tmp_pre)
-                    #     sucs_configs_custom.append(tmp_suc)
-    import random
-    if custom:
-        indices = list(range(len(pres_configs_custom)))
-        random.shuffle(indices)
-        pres_configs_custom_shuffled = [pres_configs_custom[i] for i in indices]
-        sucs_configs_custom_shuffled = [sucs_configs_custom[i] for i in indices]
+    couunter = 0
 
 
-    #           shuffle 100 times the other digits ==> gives the pre, the exchange with the action, gives the sucs
-    # 
-    with np.load(path) as data:
-        pres_configs = data['pres'][:num_examples] # numpy, (5000, 9)
-        sucs_configs = data['sucs'][:num_examples]
+    for iz, pp in enumerate(unique_pairs):
 
-    if custom:
-        print("custom true")
-        pres_configs = pres_configs_custom_shuffled
-        sucs_configs = sucs_configs_custom_shuffled
-   
+        # if loop over the pair we want to remove
+        if pp[0] == edge_to_remove[0] and pp[1] == edge_to_remove[1]:
+            #if couunter == 0:
+            unique_pairs_copy.pop(iz)
+            #plt.imsave("PUZZI-"+str(num)+".PNG",np.squeeze(pres[num]))
+            # thepair = p.states(width, height, pp, custom=True)[:,:,:,None]
+            # plt.imsave("PUZZZZZ-0.PNG",np.squeeze(thepair[0]))
+            # plt.imsave("PUZZZZZ-1.PNG",np.squeeze(thepair[1]))
+            #couunter+=1
+
+        # if loop over the mirror transitions
+        elif pp[0] == edge_to_remove[1] and pp[1] == edge_to_remove[0]:
+            unique_pairs_copy.pop(iz)
+
+    unique_pairs = unique_pairs_copy
+
+    print("uuuu")
+    print(len(unique_pairs))
+
+
+    # [3, 7, 5, 0, 1, 2, 8, 4, 6]
+
+    # iii) take the state with the most states that join it
+
+    # iv) remove one transition <=> to the above and print it as reduced images (init / goal)
+
+    # sauve pairs et actions dans pickle
+
+    all_actions_unique = unique_pairs
+
+
+
+    # Assuming 'unique_pairs' is already computed as in the previous example
+
+    # Step 1: Convert 'unique_pairs' to a tuple of tuples for faster lookups
+    unique_pairs_hashable = [tuple(map(tuple, pair)) for pair in unique_pairs]
+
+    # Step 2: Create a mapping from each unique pair to its index
+    pair_to_index = {pair: index for index, pair in enumerate(unique_pairs_hashable)}
+
+    # Step 3: For each pair in the original 'pairs' array, create a one-hot encoded vector
+    one_hot_encoded = []
+    with open("actions_indices_zero_top_left_go_right.txt", "w") as file1,  open("all_actions.txt", "w") as file2:
+        for ind, pair in enumerate(unique_pairs):
+
+  
+            if pair[0][0] == 0 and pair[1][1] == 0:
+                file1.write(str(ind) + "\n")
+                
+
+            file2.write(str(ind)+" "+str(pair) + "\n")
+
+            # Convert the pair to a hashable format
+            pair_hashable = tuple(map(tuple, pair))
+            
+            # Find the index of this pair in 'unique_pairs'
+            index = pair_to_index[pair_hashable]
+            
+            # Create a one-hot encoded vector for this pair
+            one_hot_vector = [0] * len(unique_pairs)
+            one_hot_vector[index] = 1
+            
+            # Add the one-hot vector to the list
+            one_hot_encoded.append(one_hot_vector)
+
+
+
+    one_hot_encoded = np.array(one_hot_encoded)
+
+    unique_pairs = np.array(unique_pairs)
+
+    pres_configs = unique_pairs[:,0,:]
+
+    sucs_configs = unique_pairs[:,1,:]
+
+
+
     # take all the transitions that reprensent pos0 + move_smwhere 
 
     #     compute the sum of the transitiosn
 
     #            check in the one_hot_encod finale vector IF there is also the same number of this type of transitions
 
-    #             
-    print("pres_configs 000")
-    print(len(pres_configs)) # 2800
-    print(pres_configs[0]) # [2 4 0 1 5 7 6 3 8]
 
-    print(sucs_configs[0]) # [2 0 4 1 5 7 6 3 8]
+    actions_transitions_one_hot = one_hot_encoded
 
-    actions_one_hot, all_actions, zero_positions_pres = from_pairs_of_confis_to_onehotaction_repr(pres_configs, sucs_configs, augmented=augmented, custom=custom)
-
-    # 
-    all_actions_binary_representation = [int_to_binary(action.item(), 2) for action in all_actions]
-    # all_actions_binary_representation[:5] = [[1, 1], [1, 0], [0, 1], [1, 0], [0, 0]]
-
-    zero_positions_pres_binary_representation = [int_to_binary(pres.item(), 4) for pres in zero_positions_pres]
-
-    # zero_positions_pres_binary_representation[:5] : [[0, 1, 1, 1], [0, 1, 0, 0], 
-    #                                                       [0, 0, 1, 0], [0, 1, 0, 1], [1, 0, 0, 0]]
-    
-
-    # 
-    actions_transitions_binary_repr = [a + b for a, b in zip(zero_positions_pres_binary_representation, all_actions_binary_representation)]
-
-
-    #actions_transitions[:5] = [[0, 1, 1, 1, 1, 1], [0, 1, 0, 0, 1, 0], [0, 0, 1, 0, 0, 1],
-    #                            zero_pos  , action_mov
-
-
-
-    actions_transitions_binary_repr = np.array(actions_transitions_binary_repr)
-
-
-
-    if one_hot:
-        actions_transitions = actions_one_hot.numpy()
-    else:
-        actions_transitions = actions_transitions_binary_repr
-
+    print("shape actions_transitions_one_hot")
+    print(actions_transitions_one_hot.shape)
+    # sont utilisés les min et max de chaque partie (pres et sucs)
    
-    ##################################################################
-    #                           THE END                              #
-    ##################################################################
+    # 1) vérifier si ce sont les mêmes 
+
+    # 2) 
+
+    init_and_goal = p.states(width, height, edge_to_remove, custom=True)[0][:,:,:,None]
     
-    # right_sucs_configs
-    pres = p.states(width, height, pres_configs, custom=custom)[:,:,:,None]
-    sucs = p.states(width, height, sucs_configs, custom=custom)[:,:,:,None]
+    #print(init_and_goal.shape)
+    init_and_goal = np.array(init_and_goal)
+    print(np.unique(init_and_goal))
+    print("unique1")
+
+    # init_and_goal = np.where(init_and_goal[:,:,:] > 0.2, 1, 0)
+    # print(init_and_goal.shape)
+    # exit()
+
+    print(pres_configs.shape)
+
+
+    # data = {
+    #     "init" : init_and_goal[0],
+    #     "goal": init_and_goal[1],
+    # }
     
-    # !!!!!!
-    # config should not be printed from pres_configs or sucs_config here,
-    # because these are corrupted, instead they should be found inside the 
-    # from_pairs_of_confis_to_onehotaction_repr function
-    # then look at the right_pres_configs for instance
-    # !!!!!!
-    # 2 1 2
-    plot_image(pres[0], "0PRES.png")
-    plot_image(sucs[0], "0SUCS.png")
-    print("actionstrn")
-
-    #print(actions_transitions[600])
-    print("putain")
-    print(np.argmax(np.array(actions_transitions[555])))
+    # if not os.path.exists("images_arrays_problem"):
+    #     os.makedirs("images_arrays_problem") 
+    # filename = "data.p"
+    # with open("images_arrays_problem"+"/"+filename, mode="wb") as f:
+    #     pickle.dump(data, f)
 
 
-    print('the f*** action')
-    aaaa = np.array(actions_transitions[11]).squeeze()
-    print(np.where(aaaa == 1))
-    #exit()
-    print(all_combis_augmented[8])
-    # actions: push_up: 0, push_down: 1, push_left: 2, push_right: 3
 
-    B, H, W, C = pres.shape
-    parameters["picsize"]        = [[H,W]]
-    print("loaded. picsize:",[H,W])
+
+    plt.imsave("iniit.PNG",np.squeeze(init_and_goal[0]))
+    plt.imsave("gooal.PNG",np.squeeze(init_and_goal[1]))
+
+    pres_im, max_, min_ = p.states(width, height, pres_configs, custom=True)
+    sucs_im, maxx_, minn_ = p.states(width, height, sucs_configs, custom=True)
+    print("luu")
+    print(max_)
+    print(maxx_)
+    print(min_)
+    print(minn_)
+
+    pres = pres_im[:,:,:,None]
+    sucs = sucs_im[:,:,:,None]
+
+
+
+    # pres, _, _ = p.states(width, height, pres_configs, custom=True)[:,:,:,None]
+    # sucs, _, _ = p.states(width, height, sucs_configs, custom=True)[:,:,:,None]
+
+    
+    # besoin des id et des actions
+
+    print("pres[0]")
+    print(pres[0])
+    with open("actions_indices_zero_top_left_go_right.txt", "r") as file:
+        numbers_list = [int(line.strip()) for line in file]
+
+    # for num in numbers_list:
+    #     plt.imsave("PUZZI-"+str(num)+".PNG",np.squeeze(pres[num]))
+
+
+
+
+
+
+
+
 
     if objects:
-
         pres = image_to_tiled_objects(pres, p.setting['base'])
         sucs = image_to_tiled_objects(sucs, p.setting['base'])
         bboxes = tiled_bboxes(B, height, width, p.setting['base'])
         pres = np.concatenate([pres,bboxes], axis=-1)
         sucs = np.concatenate([sucs,bboxes], axis=-1)
         transitions, states = normalize_transitions_objects(pres,sucs,new_params=parameters)
+    
     else:
-        transitions, states = normalize_transitions(pres, sucs)
 
-    return  transitions, actions_transitions, states
+        transitions, states, mean_, std_ = normalize_transitions(pres, sucs)
+
+
+    print(np.unique(transitions))
+    print(np.min(transitions))
+    print(np.max(transitions))
+
+
+
+    # on va faire 
+    # un train_set et un val_test_set
+
+
+    train_set = []
+    for ip, tran in enumerate(transitions):
+        train_set.append([tran, actions_transitions_one_hot[ip]])
+
+    val_test_set = train_set.copy()
+    random.shuffle(val_test_set)
+
+
+
+    # data = {
+    #     "train_set" : train_set,
+    #     "val_test_set": val_test_set,
+    #     "actions_transitions_one_hot": actions_transitions_one_hot,
+    #     "all_actions_unique": all_actions_unique, 
+    #     "mean_": mean_, 
+    #     "std_": std_
+    # }
+    
+    # if not os.path.exists("puzzle_dataset"):
+    #     os.makedirs("puzzle_dataset") 
+    # filename = "data.p"
+    # with open("puzzle_dataset"+"/"+filename, mode="wb") as f:
+    #     pickle.dump(data, f)
+
+
+
+    return  train_set, val_test_set[:len(val_test_set)//2], actions_transitions_one_hot, all_actions_unique, mean_, std_, maxx_, minn_
 
 
 
 
 def return_transitions():
 
-    transitions, actions_transitions, states = load_puzzle("mnist", 3, 3, 5000, False, parameters, one_hot=False)
+    train_set, val_test_set, actions_transitions, states, masks, masked_transitions = load_puzzle("mnist", 3, 3, 5000, False, parameters, one_hot=False)
 
-    return transitions, actions_transitions
-
-
-
-def return_transitions_one_hot(augmented=False, custom=False):
-
-    transitions, actions_transitions, states = load_puzzle("mnist", 3, 3, 5000, False, parameters,  one_hot=True, augmented=augmented, custom=custom)
-
-    return transitions, actions_transitions
+    return train_set, val_test_set, actions_transitions
 
 
 
+def return_transitions_one_hot(augmented=False, custom=False, masked='both', shuffle_dataset=False):
+
+    train_set, val_test_set, actions_transitions, all_actions_unique, mean_, std_, max_, min_ = load_puzzle("mnist", 3, 3, 5000, False, parameters,  one_hot=True, augmented=augmented, custom=custom, masked=masked, shuffle_dataset=shuffle_dataset)
+
+    return train_set, val_test_set, actions_transitions, all_actions_unique, mean_, std_, max_, min_
+
+
+
+
+return_transitions_one_hot(augmented=False, custom=True, masked=None, shuffle_dataset=True)
+
+
+#print(return_all_next_states([0,1,2,3,4,5,6,7]))
+
+#print(len(return_all_transitions_configs()))
+
+#print(return_trace_from_one_config([0,1,2,3,4,5,6,7,8], 5))

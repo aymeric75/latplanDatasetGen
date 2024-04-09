@@ -1,0 +1,32 @@
+digraph {
+	fake [style=invisible]
+	sink
+	t2
+	t0 [shape=doublecircle]
+	a0 [shape=doublecircle]
+	t3
+	t1
+	t4 [shape=doublecircle]
+	fake -> "['t0']" [style=bold]
+	t0 -> t1 [label=b]
+	t0 -> t2 [label=a]
+	t1 -> t2 [label=c]
+	t1 -> t4 [label=b]
+	t2 -> t1 [label=b]
+	t2 -> t4 [label=a]
+	t3 -> t0 [label=c]
+	t3 -> t3 [label=b]
+	t3 -> t1 [label=a]
+	t4 -> t4 [label=a]
+	t4 -> t0 [label=b]
+	t4 -> t0 [label=c]
+	a0 -> t1 [label=a]
+	sink -> sink [label=a]
+	sink -> sink [label=c]
+	sink -> sink [label=b]
+	t2 -> sink [label=c]
+	t0 -> sink [label=c]
+	t1 -> sink [label=a]
+	a0 -> sink [label=c]
+	a0 -> sink [label=b]
+}
